@@ -24,7 +24,7 @@ function send() {
   let timestamp = Date.now();
   db.ref("messages/" + timestamp).set({
     username: username,
-    message: document.getElementById("message-input").value
+    message: document.getElementById("message-input").value,
   });
   document.getElementById("message-input").value = "";
   document.getElementById("message-input").focus()
