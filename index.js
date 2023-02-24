@@ -20,22 +20,43 @@ if ("username" in localStorage == false) {
 } else {
     username = localStorage.username
 }
-document.getElementById("message-btn").onclick = function() {
-  const timestamp = Date.now();
-  // create db collection and send in the data
+function send() {
+  let timestamp = Date.now();
   db.ref("messages/" + timestamp).set({
     username: username,
     message: document.getElementById("message-input").value
   });
   document.getElementById("message-input").value = "";
+  document.getElementById("message-input").focus()
 }
-
+document.getElementById("message-btn").onclick = function() {
+    send()
+}
+document.getElementById("message-input").onkeydown = function(key) {
+    if (key.key == "Enter") {
+        send()
+    }
+}
 const fetchChat = db.ref("messages/");
 fetchChat.on("child_added", function (snapshot) {
-  const messages = snapshot.val();
-  const message = `<li class=${
-    username === messages.username ? "sent" : "receive"
-  }><span>${messages.username}: </span>${messages.message}</li>`;
+  let messages = snapshot.val();
+  let div = document.createElement("div")
+  div.style.padding = "15px"
+  let msg = document.createElement("div")
+  msg.style.padding = "10px"
+  msg.style.color = "white"
+  msg.style.borderRadius = "10px"
+  if (messages.username == username) {
+      div.style.textAlign = "right"
+      msg.style.backgroundColor = "blue"
+  } else {
+      div.style.textAlign = "left"
+      msg.style.backgroundColor = "grey"
+  }
+  msg.innerHTML = messages.username + ": " + messages.message
+  
   // append the message on the page
-  document.getElementById("messages").innerHTML += message;
+  div.appendChild(msg)
+  document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
 });
