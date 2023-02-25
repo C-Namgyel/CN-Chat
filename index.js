@@ -10,7 +10,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-var username 
+var username
 if ("username" in localStorage == false) {
     username = prompt("Please Enter Your Name")
     localStorage.username = username
@@ -22,7 +22,8 @@ function send() {
   db.ref("messages/" + timestamp).set({
     username: username,
     message: document.getElementById("message-input").value,
-    id: timestamp
+    id: timestamp,
+    seen: false
   });
   document.getElementById("message-input").value = "";
   document.getElementById("message-input").focus()
@@ -58,7 +59,7 @@ fetchChat.on("child_added", function (snapshot) {
       div.style.textAlign = "left"
       msg.style.backgroundColor = "grey"
       sound("assets/notify.wav")
-      navigator.vibrate(100, 50, 100)
+      navigator.vibrate(150, 150, 150)
   }
   msg.innerHTML = messages.username + ": " + messages.message
   div.appendChild(msg)
@@ -73,10 +74,31 @@ fetchChat.on("child_added", function (snapshot) {
       }
     }
   }
+  if (messages.seen == true) {
+    let seenElem = document.createElement("i")
+    seenElem.innerHTML = "Seen"
+    document.getElementById("message"+snapshot.val().id).appendChild(document.createElement("br"))
+    document.getElementById("message"+snapshot.val().id).appendChild(seenElem)
+  } else {
+    if (messages.username != username) {
+      db.ref("messages/" + messages.id).update({
+        id: messages.id,
+        username: messages.username,
+        message: messages.message,
+        seen: true
+      })
+    }
+  }
 });
 fetchChat.on("child_removed", function (snapshot) {
   document.getElementById("message"+snapshot.val().id).innerHTML = "<i>"+snapshot.val().username+" unsent a message</i>"
 });
+fetchChat.on("child_changed", function (snapshot) {
+  let seenElem = document.createElement("i")
+  seenElem.innerHTML = "Seen"
+  document.getElementById("message"+snapshot.val().id).appendChild(document.createElement("br"))
+  document.getElementById("message"+snapshot.val().id).appendChild(seenElem)
+})
 //Notice
 setTimeout(function() {
   let div = document.createElement("div")
@@ -87,17 +109,55 @@ setTimeout(function() {
   msg.style.borderRadius = "10px"
   div.style.textAlign = "left"
   msg.style.backgroundColor = "grey"
-  msg.innerHTML = "<i>[System]</i>:<br>Tips:<br>&nbsp;&nbsp;1. Click on the message you sent to unsend it<br>"
+  msg.innerHTML = "<i>[System]</i>:<br>Tips:<br>&nbsp;&nbsp;1. Click on the message you sent to unsend it<br>&nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen"
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
-  msg.onclick = function(val) {
-    if (val.target.value != undefined && JSON.parse(val.target.value).sender == username) {
-      if (confirm("Unsend this message?") == true) {
-        let value = JSON.parse(val.target.value).id;
-        firebase.database().ref('messages/'+value).remove()
-        val.target.value = undefined;
-      }
-    }
+}, 3000)
+//Online status
+function getTime() {
+  function str(int) {
+    return(""+int)
   }
+  let t = new Date()
+  let year = t.getUTCFullYear()
+  let month = t.getUTCMonth()  + 1;
+  let date = t.getUTCDate()
+  let hour = t.getUTCHours()
+  let minute = t.getUTCMinutes()
+  let second = t.getUTCSeconds()
+  if (month < 10) {
+    month = "0"+month
+  }
+  if (date < 10) {
+    date = "0"+date
+  }
+  if (hour < 10) {
+    hour = "0"+hour
+  }
+  if (minute < 10) {
+    minute = "0"+minute
+  }
+  if (second < 10) {
+    second = "0"+second
+  }
+  return(str(year)+str(month)+str(date)+str(hour)+str(minute)+str(second))
+}
+setInterval(function() {
+  db.ref("user/" + username).set({
+    ping: getTime()
+  });
+  firebase.database().ref().child("user").get().then((snapshot) => {
+    if (snapshot.exists()) {
+      let online = 0;
+      for (o = 0; o < Object.keys(snapshot.val()).length; o++) {
+        if (parseInt(Object.values(snapshot.val())[o].ping) >= parseInt(getTime()) - 5) {
+          online += 1;
+        } else {
+          firebase.database().ref('user/'+Object.keys(snapshot.val())[o]).remove()
+        }
+      }
+      document.getElementById("online").innerHTML = "Online: "+online
+    }
+  })
 }, 3000)
