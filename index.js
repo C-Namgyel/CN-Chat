@@ -8,11 +8,8 @@ const firebaseConfig = {
   measurementId: "G-TVJ89QCVYC",
   databaseURL: "https://cn-chat-7ac19-default-rtdb.firebaseio.com/"
 };
-
 firebase.initializeApp(firebaseConfig);
-
 const db = firebase.database();
-
 var username 
 if ("username" in localStorage == false) {
     username = prompt("Please Enter Your Name")
@@ -25,12 +22,18 @@ function send() {
   db.ref("messages/" + timestamp).set({
     username: username,
     message: document.getElementById("message-input").value,
+    id: timestamp
   });
   document.getElementById("message-input").value = "";
   document.getElementById("message-input").focus()
 }
+function sound(sound) {
+  let aud = document.createElement("audio")
+  aud.src = sound;
+  aud.play();
+}
 document.getElementById("message-btn").onclick = function() {
-    send()
+  send()
 }
 document.getElementById("message-input").onkeydown = function(key) {
     if (key.key == "Enter") {
@@ -43,6 +46,8 @@ fetchChat.on("child_added", function (snapshot) {
   let div = document.createElement("div")
   div.style.padding = "15px"
   let msg = document.createElement("div")
+  msg.id = "message"+messages.id;
+  msg.value = JSON.stringify({id: messages.id, sender: messages.username})
   msg.style.padding = "10px"
   msg.style.color = "white"
   msg.style.borderRadius = "10px"
@@ -52,11 +57,47 @@ fetchChat.on("child_added", function (snapshot) {
   } else {
       div.style.textAlign = "left"
       msg.style.backgroundColor = "grey"
+      sound("assets/notify.wav")
+      navigator.vibrate(100, 50, 100)
   }
   msg.innerHTML = messages.username + ": " + messages.message
-  
-  // append the message on the page
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
+  msg.onclick = function(val) {
+    if (val.target.value != undefined && JSON.parse(val.target.value).sender == username) {
+      if (confirm("Unsend this message?") == true) {
+        let value = JSON.parse(val.target.value).id;
+        firebase.database().ref('messages/'+value).remove()
+        val.target.value = undefined;
+      }
+    }
+  }
 });
+fetchChat.on("child_removed", function (snapshot) {
+  document.getElementById("message"+snapshot.val().id).innerHTML = "<i>"+snapshot.val().username+" unsent a message</i>"
+});
+//Notice
+setTimeout(function() {
+  let div = document.createElement("div")
+  div.style.padding = "15px"
+  let msg = document.createElement("div")
+  msg.style.padding = "10px"
+  msg.style.color = "white"
+  msg.style.borderRadius = "10px"
+  div.style.textAlign = "left"
+  msg.style.backgroundColor = "grey"
+  msg.innerHTML = "<i>[System]</i>:<br>Tips:<br>&nbsp;&nbsp;1. Click on the message you sent to unsend it<br>"
+  div.appendChild(msg)
+  document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
+  msg.onclick = function(val) {
+    if (val.target.value != undefined && JSON.parse(val.target.value).sender == username) {
+      if (confirm("Unsend this message?") == true) {
+        let value = JSON.parse(val.target.value).id;
+        firebase.database().ref('messages/'+value).remove()
+        val.target.value = undefined;
+      }
+    }
+  }
+}, 3000)
