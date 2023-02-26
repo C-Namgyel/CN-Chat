@@ -14,3 +14,7 @@ button {
     width: 25%;
     height: 38px;
 }
+@keyframes floatIn {
+    0% {bottom: -25%}
+    100% {bottom: 0%;}
+}

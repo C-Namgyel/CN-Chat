@@ -12,29 +12,33 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 var username
 if ("username" in localStorage == false) {
-    username = prompt("Please Enter Your Name")
-    localStorage.username = username
+  username = prompt("Please Enter Your Name")
+  localStorage.username = username
 } else {
-    username = localStorage.username
+  username = localStorage.username
 }
-function send() {
+function send(message, reply) {
   let timestamp = Date.now();
   db.ref("messages/" + timestamp).set({
     username: username,
-    message: document.getElementById("message-input").value,
+    message: message,
     id: timestamp,
+    reply: reply,
     seen: false
   });
-  document.getElementById("message-input").value = "";
-  document.getElementById("message-input").focus()
 }
 function sound(sound) {
   let aud = document.createElement("audio")
   aud.src = sound;
   aud.play();
 }
+var reply = "";
 document.getElementById("message-btn").onclick = function() {
-  send()
+  send(document.getElementById("message-input").value, reply)
+  document.getElementById("message-input").value = "";
+  document.getElementById("message-input").focus()
+  reply = "";
+  document.getElementById("replyDiv").hidden = true;
 }
 document.getElementById("message-input").onkeydown = function(key) {
   setTimeout(function() {
@@ -47,18 +51,25 @@ document.getElementById("message-input").onkeydown = function(key) {
     }
   }, 1)
   if (key.key == "Enter") {
-    send()
+    send(document.getElementById("message-input").value, reply)
+    document.getElementById("message-input").value = "";
+    document.getElementById("message-input").focus()
+    reply = "";
+    document.getElementById("replyDiv").hidden = true;
   }
 }
+function animation(elem, animationName, duration) {
+  elem.style.animationName=animationName;
+  elem.style.animationDuration=duration
+  elem.style.animationFillMode="forwards"
+}
 function createMessage(messages, starting) {
-  if (starting == false) {
-    document.getElementById("chat").style.scrollBehavior = "smooth"
-  }
   let div = document.createElement("div")
+  div.style.userSelect = "none"
   div.style.padding = "15px"
   let msg = document.createElement("div")
   msg.id = "message"+messages.id;
-  msg.value = JSON.stringify({id: messages.id, sender: messages.username})
+  msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
   msg.style.padding = "10px"
   msg.style.color = "white"
   msg.style.borderRadius = "10px"
@@ -73,42 +84,72 @@ function createMessage(messages, starting) {
         navigator.vibrate(150, 150, 150)
       }
   }
-  msg.innerHTML = messages.username + ": " + messages.message
+  if (messages.reply == "")  {
+    msg.innerHTML = messages.username + ":<br>" + messages.message
+  } else {
+    if (document.getElementById("message"+messages.reply.id) != null) {
+      msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + messages.reply.message + "\"</i><br>" + messages.message
+      msg.onclick = function show() {
+          document.getElementById("message"+messages.reply.id).scrollIntoView(false)
+          let bgc = document.getElementById("message"+messages.reply.id).style.backgroundColor;
+          if (bgc == "blue") {
+            document.getElementById("message"+messages.reply.id).style.backgroundColor = "cyan"
+          } else {
+              document.getElementById("message"+messages.reply.id).style.backgroundColor = "lightgray"
+          }
+          let bgres = setTimeout(function() {
+              document.getElementById("message"+messages.reply.id).style.backgroundColor = bgc
+          }, 1000)
+          msg.onclick = function() {
+              document.getElementById("message"+messages.reply.id).style.backgroundColor = bgc;
+              clearTimeout(bgres)
+              show()
+          }
+      }
+      let thisMsg = messages
+      db.ref("messages/").on("child_removed", function (snapshot) {
+          if (snapshot.val().id == thisMsg.reply.id) {
+              document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br>" + thisMsg.message
+          }
+      })
+    } else {
+      msg.innerHTML = messages.username + ":<br>" + messages.message
+    }
+  }
+  let scrollable = (Math.abs(document.getElementById("chat").scrollHeight - document.getElementById("chat").scrollTop - document.getElementById("chat").clientHeight))
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
-  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
-  msg.onclick = function(val) {
-    /*
-      if (confirm("Unsend this message?") == true) {
-        let value = JSON.parse(val.target.value).id;
-        firebase.database().ref('messages/'+value).remove()
-        val.target.value = undefined;
-      }
-    }*/
-    let barrier = document.createElement("div")
-    barrier.style.position = "fixed"
-    barrier.style.width = "100%"
-    barrier.style.height = "100%"
-    barrier.style.left = "0px"
-    barrier.style.top = "0px"
-    barrier.style.zIndex = 1;
-    document.body.appendChild(barrier)
-    let div = document.createElement("div")
-    div.style.position = "fixed"
-    div.style.width = "100%"
-    div.style.left = "0px"
-    div.style.bottom = "0px"
-    div.style.zIndex = 2;
-    div.style.backgroundColor = "black"
-    div.style.textAlign = "center"
-    barrier.appendChild(div)
-    if (val.target.value != undefined && JSON.parse(val.target.value).sender == username) {
+  if (scrollable < 5) {
+    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
+  }
+  msg.ontouchstart = function(val) {
+    let longPress = setTimeout(function() {
+    if (val.target.value != undefined) {
+        let barrier = document.createElement("div")
+        barrier.style.position = "fixed"
+        barrier.style.width = "100%"
+        barrier.style.height = "100%"
+        barrier.style.left = "0px"
+        barrier.style.top = "0px"
+        barrier.style.zIndex = 1;
+        document.body.appendChild(barrier)
+        let div = document.createElement("div")
+        div.style.position = "fixed"
+        div.style.width = "100%"
+        div.style.left = "0px"
+        div.style.bottom = "0%"
+        div.style.zIndex = 2;
+        div.style.backgroundColor = "black"
+        div.style.textAlign = "center"
+        animation(div, "floatIn", "0.5s")
+        barrier.appendChild(div)
+      if (JSON.parse(val.target.value).sender == username) {
       let unsend = document.createElement("button")
       unsend.innerHTML = "Unsend"
       unsend.value = val.target.value;
       div.appendChild(unsend)
       unsend.onclick = function(unsender) {
-        if (unsender.target.value != undefined && JSON.parse(unsender.target.value).sender == username) {
+        if (unsender.target.value != undefined && unsender.target.value != "undefined" && JSON.parse(unsender.target.value).sender == username) {
           if (confirm("Unsend this message?") == true) {
             let value = JSON.parse(unsender.target.value).id;
             firebase.database().ref('messages/'+value).remove()
@@ -117,18 +158,31 @@ function createMessage(messages, starting) {
         }
         barrier.remove()
       }
-    }
-    let reply = document.createElement("button")
-    reply.innerHTML = "Reply"
-    reply.value = val.target.value;
-    div.appendChild(reply)
-    reply.onclick = function(replyer) {
-      alert("Under Development")
+      }
+    let replyBtn = document.createElement("button")
+    replyBtn.innerHTML = "Reply"
+    replyBtn.value = val.target.value;
+    div.appendChild(replyBtn)
+    replyBtn.onclick = function(replyer) {
+      let data = JSON.parse(replyer.target.value)
+      reply = {
+        id: data.id,
+        to: data.sender,
+        message: data.message
+      }
       barrier.remove()
+      document.getElementById("message-input").focus()
+      document.getElementById("replyDiv").hidden = false;
+      document.getElementById("replyTxt").innerHTML = "Replying to " + data.sender + "<br><i>" + data.message + "</i>"
     }
     barrier.onclick = function() {
       barrier.remove()
     }
+    }
+  }, 500)
+  val.target.ontouchend = function() {
+      clearTimeout(longPress)
+  }
   }
   if (messages.seen == true) {
     let seenElem = document.createElement("img")
@@ -142,10 +196,15 @@ function createMessage(messages, starting) {
         id: messages.id,
         username: messages.username,
         message: messages.message,
+        reply: messages.reply,
         seen: true
       })
     }
   }
+}
+document.getElementById("replyClose").onclick = function() {
+    reply = "";
+    document.getElementById("replyDiv").hidden = true;
 }
 var starting = true;
 firebase.database().ref().child("messages/").get().then((snapshot) => {
@@ -155,6 +214,7 @@ firebase.database().ref().child("messages/").get().then((snapshot) => {
     }
   }
   starting = false
+  document.getElementById("chat").style.scrollBehavior = "smooth"
 }).catch((error) => {
   console.error(error);
 });
@@ -168,6 +228,7 @@ fetchChat.on("child_added", function (snapshot) {
 });
 fetchChat.on("child_removed", function (snapshot) {
   document.getElementById("message"+snapshot.val().id).innerHTML = "<i>"+snapshot.val().username+" unsent a message</i>"
+  document.getElementById("message"+snapshot.val().id).value = undefined
 });
 fetchChat.on("child_changed", function (snapshot) {
   let seenElem = document.createElement("img")
@@ -179,6 +240,7 @@ fetchChat.on("child_changed", function (snapshot) {
 //Notice
 setTimeout(function() {
   let div = document.createElement("div")
+  div.style.userSelect = "none"
   div.style.padding = "15px"
   let msg = document.createElement("div")
   msg.style.padding = "10px"
@@ -186,7 +248,11 @@ setTimeout(function() {
   msg.style.borderRadius = "10px"
   div.style.textAlign = "left"
   msg.style.backgroundColor = "grey"
-  msg.innerHTML = "<i>[System]</i>:<br>Tips:<br>&nbsp;&nbsp;1. Click on the message you sent to unsend it<br>&nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen"
+  msg.innerHTML = `<i>[System]</i>:<br>
+Tips:<br>
+&nbsp;&nbsp;1. Long press on the message to unsend it or to reply to the message<br>
+&nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen<br>
+&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message`
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
