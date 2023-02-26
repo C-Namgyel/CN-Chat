@@ -37,9 +37,18 @@ document.getElementById("message-btn").onclick = function() {
   send()
 }
 document.getElementById("message-input").onkeydown = function(key) {
-    if (key.key == "Enter") {
-        send()
+  setTimeout(function() {
+    if (document.getElementById("message-input").value.trim() == "") {
+      document.getElementById("message-input").style.width = "95%";
+      document.getElementById("message-btn").hidden = true;
+    } else {
+      document.getElementById("message-input").style.width = "75%";
+      document.getElementById("message-btn").hidden = false;
     }
+  }, 1)
+  if (key.key == "Enter") {
+    send()
+  }
 }
 function createMessage(messages, starting) {
   if (starting == false) {
@@ -69,12 +78,56 @@ function createMessage(messages, starting) {
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
   msg.onclick = function(val) {
-    if (val.target.value != undefined && JSON.parse(val.target.value).sender == username) {
+    /*
       if (confirm("Unsend this message?") == true) {
         let value = JSON.parse(val.target.value).id;
         firebase.database().ref('messages/'+value).remove()
         val.target.value = undefined;
       }
+    }*/
+    let barrier = document.createElement("div")
+    barrier.style.position = "fixed"
+    barrier.style.width = "100%"
+    barrier.style.height = "100%"
+    barrier.style.left = "0px"
+    barrier.style.top = "0px"
+    barrier.style.zIndex = 1;
+    document.body.appendChild(barrier)
+    let div = document.createElement("div")
+    div.style.position = "fixed"
+    div.style.width = "100%"
+    div.style.left = "0px"
+    div.style.bottom = "0px"
+    div.style.zIndex = 2;
+    div.style.backgroundColor = "black"
+    div.style.textAlign = "center"
+    barrier.appendChild(div)
+    if (val.target.value != undefined && JSON.parse(val.target.value).sender == username) {
+      let unsend = document.createElement("button")
+      unsend.innerHTML = "Unsend"
+      unsend.value = val.target.value;
+      div.appendChild(unsend)
+      unsend.onclick = function(unsender) {
+        if (unsender.target.value != undefined && JSON.parse(unsender.target.value).sender == username) {
+          if (confirm("Unsend this message?") == true) {
+            let value = JSON.parse(unsender.target.value).id;
+            firebase.database().ref('messages/'+value).remove()
+            unsender.target.value = undefined;
+          }
+        }
+        barrier.remove()
+      }
+    }
+    let reply = document.createElement("button")
+    reply.innerHTML = "Reply"
+    reply.value = val.target.value;
+    div.appendChild(reply)
+    reply.onclick = function(replyer) {
+      alert("Under Development")
+      barrier.remove()
+    }
+    barrier.onclick = function() {
+      barrier.remove()
     }
   }
   if (messages.seen == true) {
@@ -100,8 +153,8 @@ firebase.database().ref().child("messages/").get().then((snapshot) => {
     for (r = 0; r < Object.keys(snapshot.val()).length; r++) {
       createMessage(Object.values(snapshot.val())[r], starting);
     }
-    starting = false
   }
+  starting = false
 }).catch((error) => {
   console.error(error);
 });
