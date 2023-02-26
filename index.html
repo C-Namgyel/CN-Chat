@@ -4,15 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>CN Chat</title>
+    <link rel="icon" type="image/x-icon" href="assets/logo.png">
     <link rel="stylesheet" href="index.css">
   </head>
   <body style="background-color: f3f2f3;">
     <header>
       <label style="text-align: center; font-size: 200%; font-weight: bolder;">CN Chat</label>
-      <label style="float: right;" id="online">Online: 1</label>
+      <label style="float: right;" id="online">Online: 0</label>
     </header>
-
-    <div id="chat" style="position: absolute; height: 80%; left: 0px; top: 10%; width: 100%; overflow: auto; overflow-wrap: break-word; scroll-behavior: smooth;">
+    <div id="chat" style="position: absolute; height: 80%; left: 0px; top: 10%; width: 100%; overflow: auto; overflow-wrap: break-word; scroll-behavior: auto;">
       <div id="message-form">
         <input id="message-input" style="width: 75%;" type="text">
         <button id="message-btn" style="width: 20%;">Send</button>

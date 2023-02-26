@@ -41,9 +41,10 @@ document.getElementById("message-input").onkeydown = function(key) {
         send()
     }
 }
-const fetchChat = db.ref("messages/");
-fetchChat.on("child_added", function (snapshot) {
-  let messages = snapshot.val();
+function createMessage(messages, starting) {
+  if (starting == false) {
+    document.getElementById("chat").style.scrollBehavior = "smooth"
+  }
   let div = document.createElement("div")
   div.style.padding = "15px"
   let msg = document.createElement("div")
@@ -58,8 +59,10 @@ fetchChat.on("child_added", function (snapshot) {
   } else {
       div.style.textAlign = "left"
       msg.style.backgroundColor = "grey"
-      sound("assets/notify.wav")
-      navigator.vibrate(150, 150, 150)
+      if (starting == false) {
+        sound("assets/notify.wav")
+        navigator.vibrate(150, 150, 150)
+      }
   }
   msg.innerHTML = messages.username + ": " + messages.message
   div.appendChild(msg)
@@ -75,10 +78,11 @@ fetchChat.on("child_added", function (snapshot) {
     }
   }
   if (messages.seen == true) {
-    let seenElem = document.createElement("i")
-    seenElem.innerHTML = "Seen"
-    document.getElementById("message"+snapshot.val().id).appendChild(document.createElement("br"))
-    document.getElementById("message"+snapshot.val().id).appendChild(seenElem)
+    let seenElem = document.createElement("img")
+    seenElem.src = "assets/msgSeen.png"
+    seenElem.style.height = "15px"
+    document.getElementById("message"+messages.id).appendChild(document.createElement("br"))
+    document.getElementById("message"+messages.id).appendChild(seenElem)
   } else {
     if (messages.username != username) {
       db.ref("messages/" + messages.id).update({
@@ -89,13 +93,33 @@ fetchChat.on("child_added", function (snapshot) {
       })
     }
   }
+}
+var starting = true;
+firebase.database().ref().child("messages/").get().then((snapshot) => {
+  if (snapshot.exists()) {
+    for (r = 0; r < Object.keys(snapshot.val()).length; r++) {
+      createMessage(Object.values(snapshot.val())[r], starting);
+    }
+    starting = false
+  }
+}).catch((error) => {
+  console.error(error);
+});
+
+const fetchChat = db.ref("messages/");
+fetchChat.on("child_added", function (snapshot) {
+  if (starting == false) {
+    let messages = snapshot.val();
+    createMessage(messages, starting)
+  }
 });
 fetchChat.on("child_removed", function (snapshot) {
   document.getElementById("message"+snapshot.val().id).innerHTML = "<i>"+snapshot.val().username+" unsent a message</i>"
 });
 fetchChat.on("child_changed", function (snapshot) {
-  let seenElem = document.createElement("i")
-  seenElem.innerHTML = "Seen"
+  let seenElem = document.createElement("img")
+  seenElem.src = "assets/msgSeen.png"
+  seenElem.style.height = "15px"
   document.getElementById("message"+snapshot.val().id).appendChild(document.createElement("br"))
   document.getElementById("message"+snapshot.val().id).appendChild(seenElem)
 })
@@ -143,21 +167,20 @@ function getTime() {
   }
   return(str(year)+str(month)+str(date)+str(hour)+str(minute)+str(second))
 }
+var userPings = {}
 setInterval(function() {
   db.ref("user/" + username).set({
+    user: username,
     ping: getTime()
   });
-  firebase.database().ref().child("user").get().then((snapshot) => {
-    if (snapshot.exists()) {
-      let online = 0;
-      for (o = 0; o < Object.keys(snapshot.val()).length; o++) {
-        if (parseInt(Object.values(snapshot.val())[o].ping) >= parseInt(getTime()) - 5) {
-          online += 1;
-        } else {
-          firebase.database().ref('user/'+Object.keys(snapshot.val())[o]).remove()
-        }
-      }
-      document.getElementById("online").innerHTML = "Online: "+online
+  for (o = 0; o < Object.keys(userPings).length; o++) {
+    userPings[Object.keys(userPings)[o]] = parseInt(userPings[Object.keys(userPings)[o]]) - 1 ;
+    if (userPings[Object.keys(userPings)[o]] < 0) {
+      Reflect.deleteProperty(userPings, Object.keys(userPings)[o]);
     }
-  })
-}, 3000)
+  }
+  document.getElementById("online").innerHTML = "Online: "+Object.keys(userPings).length;
+}, 1000)
+db.ref("user/").on("child_changed", function (snapshot) {
+  userPings[snapshot.val().user] = 3;
+})
