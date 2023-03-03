@@ -1,3 +1,4 @@
+//Firebase Setup
 const firebaseConfig = {
   apiKey: "AIzaSyDkAhgKQNe7OaVT5P0wFg7h98rZT8v22Q0",
   authDomain: "cn-chat-7ac19.firebaseapp.com",
@@ -10,6 +11,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+//Username
 var username
 if ("username" in localStorage == false) {
   username = prompt("Please Enter Your Name")
@@ -17,6 +19,7 @@ if ("username" in localStorage == false) {
 } else {
   username = localStorage.username
 }
+//Functions
 function send(message, reply) {
   let timestamp = Date.now();
   db.ref("messages/" + timestamp).set({
@@ -24,7 +27,8 @@ function send(message, reply) {
     message: message,
     id: timestamp,
     reply: reply,
-    seen: false
+    seen: false,
+    type: "text"
   });
 }
 function sound(sound) {
@@ -32,42 +36,45 @@ function sound(sound) {
   aud.src = sound;
   aud.play();
 }
-var reply = "";
-document.getElementById("message-btn").onclick = function() {
-  send(document.getElementById("message-input").value, reply)
-  document.getElementById("message-input").value = "";
-  document.getElementById("message-input").focus()
-  reply = "";
-  document.getElementById("replyDiv").hidden = true;
-}
-document.getElementById("message-input").onkeydown = function(key) {
-  setTimeout(function() {
-    if (document.getElementById("message-input").value.trim() == "") {
-      document.getElementById("message-input").style.width = "95%";
-      document.getElementById("message-btn").hidden = true;
-    } else {
-      document.getElementById("message-input").style.width = "75%";
-      document.getElementById("message-btn").hidden = false;
-    }
-  }, 1)
-  if (key.key == "Enter") {
-    send(document.getElementById("message-input").value, reply)
-    document.getElementById("message-input").value = "";
-    document.getElementById("message-input").focus()
-    reply = "";
-    document.getElementById("replyDiv").hidden = true;
-  }
-}
 function animation(elem, animationName, duration) {
   elem.style.animationName=animationName;
   elem.style.animationDuration=duration
   elem.style.animationFillMode="forwards"
 }
+function findIndexes(arr, val) {
+    let indexes = [];
+    for (let i = 0; i <= arr.lastIndexOf(val); i++) {
+        indexes.push(arr.indexOf(val, i))
+        i = arr.indexOf(val, i)
+    }
+    return(indexes)
+}
+String.prototype.replaceAt = function(index, replacement) {
+    return this.substring(0, index) + replacement + this.substring(index + replacement.length);
+}
+function censor(txt) {
+    let censorer = ["fuck", "dick", "pussy", "bitch"];
+    let includes = false;
+    let newTxt = txt;
+    for (let c = 0; c < censorer.length; c++) {
+        if (txt.toLowerCase().includes(censorer[c]) == true) {
+            for (let e = 0; e < findIndexes(txt.toLowerCase(), censorer[c]).length; e++) {
+                for (let n = 0; n < censorer[c].length; n++) {
+                    newTxt = newTxt.replaceAt(parseInt(findIndexes(txt.toLowerCase(), censorer[c])[e]) + n, "*")
+                }
+            }
+        }
+    }
+    return(newTxt)
+}
 function createMessage(messages, starting) {
   let div = document.createElement("div")
   div.style.userSelect = "none"
   div.style.padding = "15px"
-  let msg = document.createElement("div")
+  let msg;
+  if (messages.type == "text") {
+    console.log("text")
+  msg = document.createElement("div")
   msg.id = "message"+messages.id;
   msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
   msg.style.padding = "10px"
@@ -85,10 +92,10 @@ function createMessage(messages, starting) {
       }
   }
   if (messages.reply == "")  {
-    msg.innerHTML = messages.username + ":<br>" + messages.message
+    msg.innerHTML = messages.username + ":<br>" + censor(messages.message)
   } else {
     if (document.getElementById("message"+messages.reply.id) != null) {
-      msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + messages.reply.message + "\"</i><br>" + messages.message
+      msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + censor(messages.reply.message) + "\"</i><br>" + censor(messages.message)
       msg.onclick = function show() {
           document.getElementById("message"+messages.reply.id).scrollIntoView(false)
           let bgc = document.getElementById("message"+messages.reply.id).style.backgroundColor;
@@ -109,17 +116,49 @@ function createMessage(messages, starting) {
       let thisMsg = messages
       db.ref("messages/").on("child_removed", function (snapshot) {
           if (snapshot.val().id == thisMsg.reply.id) {
-              document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br>" + thisMsg.message
+              document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br>" + censor(messages.message)
           }
       })
     } else {
       msg.innerHTML = messages.username + ":<br>" + messages.message
     }
   }
+  } else {
+      console.log("else")
+  msg = document.createElement("div")
+  msg.id = "message"+messages.id;
+  msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
+  msg.style.padding = "10px"
+  msg.style.color = "white"
+  msg.style.borderRadius = "10px"
+  msg.innerHTML = messages.username + ":"
+  if (messages.username == username) {
+      div.style.textAlign = "right"
+      msg.style.backgroundColor = "blue"
+  } else {
+      div.style.textAlign = "left"
+      msg.style.backgroundColor = "grey"
+      if (starting == false) {
+        sound("assets/notify.wav")
+        navigator.vibrate(150, 150, 150)
+      }
+  }
+  msg.appendChild(document.createElement("br"));
+  let imgLoading = document.createElement("label")
+  imgLoading.innerHTML = "Loading Image";
+  msg.appendChild(imgLoading)
+  let img = document.createElement("img")
+  img.style.width = "90%"
+  img.src = messages.message
+  img.onload = function() {
+      msg.appendChild(img)
+      imgLoading.remove()
+  }
+  }
   let scrollable = (Math.abs(document.getElementById("chat").scrollHeight - document.getElementById("chat").scrollTop - document.getElementById("chat").clientHeight))
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
-  if (scrollable < 5) {
+  if (scrollable < 100) {
     document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
   }
   msg.ontouchstart = function(val) {
@@ -173,13 +212,16 @@ function createMessage(messages, starting) {
       barrier.remove()
       document.getElementById("message-input").focus()
       document.getElementById("replyDiv").hidden = false;
-      document.getElementById("replyTxt").innerHTML = "Replying to " + data.sender + "<br><i>" + data.message + "</i>"
+      document.getElementById("replyTxt").innerHTML = "Replying to " + data.sender + "<br><i>" + censor(data.message) + "</i>"
     }
     barrier.onclick = function() {
       barrier.remove()
     }
     }
   }, 500)
+  msg.ontouchmove = function(mov) {
+      clearTimeout(longPress)
+  }
   val.target.ontouchend = function() {
       clearTimeout(longPress)
   }
@@ -202,10 +244,42 @@ function createMessage(messages, starting) {
     }
   }
 }
+//Dealing with messages and GUIs
+var reply = "";
+document.getElementById("message-btn").onclick = function() {
+  send(document.getElementById("message-input").value, reply)
+  document.getElementById("message-input").value = "";
+  document.getElementById("message-input").focus()
+  reply = "";
+  document.getElementById("replyDiv").hidden = true;
+  document.getElementById("message-input").style.width = "75%";
+  document.getElementById("message-btn").hidden = true;
+}
+document.getElementById("message-input").onkeydown = function(key) {
+  setTimeout(function() {
+    if (document.getElementById("message-input").value.trim() == "") {
+      document.getElementById("message-input").style.width = "75%";
+      document.getElementById("message-btn").hidden = true;
+    } else {
+      document.getElementById("message-input").style.width = "55%";
+      document.getElementById("message-btn").hidden = false;
+    }
+  }, 1)
+  if (key.key == "Enter" && document.getElementById("message-btn").hidden == false) {
+    send(document.getElementById("message-input").value, reply)
+    document.getElementById("message-input").value = "";
+    document.getElementById("message-input").focus()
+    reply = "";
+    document.getElementById("replyDiv").hidden = true;
+    document.getElementById("message-input").style.width = "75%";
+    document.getElementById("message-btn").hidden = true;
+  }
+}
 document.getElementById("replyClose").onclick = function() {
     reply = "";
     document.getElementById("replyDiv").hidden = true;
 }
+//Messages
 var starting = true;
 firebase.database().ref().child("messages/").get().then((snapshot) => {
   if (snapshot.exists()) {
@@ -215,10 +289,28 @@ firebase.database().ref().child("messages/").get().then((snapshot) => {
   }
   starting = false
   document.getElementById("chat").style.scrollBehavior = "smooth"
+  //Notify
+  let div = document.createElement("div")
+  div.style.userSelect = "none"
+  div.style.padding = "15px"
+  let msg = document.createElement("div")
+  msg.style.padding = "10px"
+  msg.style.color = "white"
+  msg.style.borderRadius = "10px"
+  div.style.textAlign = "left"
+  msg.style.backgroundColor = "grey"
+  msg.innerHTML = `<i>[System]</i>:<br>
+Tips:<br>
+&nbsp;&nbsp;1. Long press on the message to unsend it or to reply to the message<br>
+&nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen<br>
+&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message`
+  div.appendChild(msg)
+  document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
 }).catch((error) => {
   console.error(error);
 });
-
+//Handles changes in db
 const fetchChat = db.ref("messages/");
 fetchChat.on("child_added", function (snapshot) {
   if (starting == false) {
@@ -237,26 +329,6 @@ fetchChat.on("child_changed", function (snapshot) {
   document.getElementById("message"+snapshot.val().id).appendChild(document.createElement("br"))
   document.getElementById("message"+snapshot.val().id).appendChild(seenElem)
 })
-//Notice
-setTimeout(function() {
-  let div = document.createElement("div")
-  div.style.userSelect = "none"
-  div.style.padding = "15px"
-  let msg = document.createElement("div")
-  msg.style.padding = "10px"
-  msg.style.color = "white"
-  msg.style.borderRadius = "10px"
-  div.style.textAlign = "left"
-  msg.style.backgroundColor = "grey"
-  msg.innerHTML = `<i>[System]</i>:<br>
-Tips:<br>
-&nbsp;&nbsp;1. Long press on the message to unsend it or to reply to the message<br>
-&nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen<br>
-&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message`
-  div.appendChild(msg)
-  document.getElementById("chat").appendChild(div);
-  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
-}, 3000)
 //Online status
 function getTime() {
   function str(int) {
@@ -301,5 +373,25 @@ setInterval(function() {
   document.getElementById("online").innerHTML = "Online: "+Object.keys(userPings).length;
 }, 1000)
 db.ref("user/").on("child_changed", function (snapshot) {
-  userPings[snapshot.val().user] = 3;
+  userPings[snapshot.val().user] = 5;
 })
+//Image Send
+document.getElementById("file").oninput = function() {
+    alert("Sending Image")
+    let file = document.getElementById("file").files[0]
+    let storageRef = firebase.storage().ref();
+    let imageRef = storageRef.child(file.name);
+    imageRef.put(file).then((snapshot) => {
+        imageRef.getDownloadURL().then((Url) => {
+            let timestamp = Date.now();
+            db.ref("messages/" + timestamp).set({
+                username: username,
+                message: Url,
+                id: timestamp,
+                reply: reply,
+                seen: false,
+                type: "image"
+            });
+        })
+    });
+}
