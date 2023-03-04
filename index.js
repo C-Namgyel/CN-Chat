@@ -18,11 +18,11 @@ function askUsername() {
     askUsername()
   } else {
     localStorage.username = name
+    username = name
   }
 }
 var username
 if ("username" in localStorage == false || localStorage.username.trim() == "") {
-  username = prompt("Please Enter Your Name")
   askUsername()
 } else {
   username = localStorage.username
@@ -375,9 +375,10 @@ firebase.database().ref().child("messages/").get().then((snapshot) => {
 Tips:<br>
 &nbsp;&nbsp;1. Long press on the message to unsend it or to reply to the message<br>
 &nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen<br>
-&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message
-&nbsp;&nbsp;4. Type a link and send it. When users click the link, the link will open
-&nbsp;&nbsp;5. You can now send images, videos, audios, and files by clicking the button beside the message input`
+&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message<br>
+&nbsp;&nbsp;4. Type a link and send it. When users click the link, the link will open<br>
+&nbsp;&nbsp;5. You can now send images, videos, audios, and files by clicking the button beside the message input<br>
+&nbsp;&nbsp;6. Click on the online count to know who all are currently online`
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
@@ -434,6 +435,7 @@ function getTime() {
 }
 var userPings = {}
 setInterval(function() {
+  if (starting == false) {
   db.ref("user/" + username).set({
     user: username,
     ping: getTime()
@@ -445,10 +447,18 @@ setInterval(function() {
     }
   }
   document.getElementById("online").innerHTML = "Online: "+Object.keys(userPings).length;
+  }
 }, 1000)
 db.ref("user/").on("child_changed", function (snapshot) {
   userPings[snapshot.val().user] = 5;
 })
+document.getElementById("online").onclick = function() {
+    let onlines = ""
+    for (let on = 0; on < Object.keys(userPings).length; on++) {
+        onlines += (on + 1) + ". " + Object.keys(userPings)[on] + "\n"
+    }
+    alert(onlines)
+}
 //Image Send
 document.getElementById("file").oninput = function() {
     let file = document.getElementById("file").files[0]
