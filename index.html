@@ -14,9 +14,9 @@
     <div id="chat" style="position: absolute; height: 80%; left: 0px; top: 10%; width: 100%; overflow: auto; overflow-wrap: break-word; scroll-behavior: auto;">
       <div id="message-form">
         <div id="replyDiv" style="text-align: left; position: relative; left: 2.5%; width: 95%" hidden><label id="replyTxt" style="text-align: left; white-space: nowrap"></label><label style="position: absolute; top: 0px; right: 2.5%;" id="replyClose">×</label></div>
-        <button style="width: 20%" onclick="document.getElementById('file').click()"><input id="file" type="file" accept="image/*" style="display: none;">Image</button>
-        <input id="message-input" style="width: 75%;" type="text">
-        <button id="message-btn" style="width: 20%;" hidden>Send</button>
+        <button class="button" style="width: 20%" onclick="document.getElementById('file').click()"><input type="file" id="file" accept="" style="display: none;">Attachment</button>
+        <input class="input" id="message-input" style="width: 75%;" type="text">
+        <button class="button" id="message-btn" style="width: 20%;" hidden>Send</button>
       </div>
     </div>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>

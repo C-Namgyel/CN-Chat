@@ -54,7 +54,6 @@ String.prototype.replaceAt = function(index, replacement) {
 }
 function censor(txt) {
     let censorer = ["fuck", "dick", "pussy", "bitch"];
-    let includes = false;
     let newTxt = txt;
     for (let c = 0; c < censorer.length; c++) {
         if (txt.toLowerCase().includes(censorer[c]) == true) {
@@ -73,87 +72,144 @@ function createMessage(messages, starting) {
   div.style.padding = "15px"
   let msg;
   if (messages.type == "text") {
-    console.log("text")
-  msg = document.createElement("div")
-  msg.id = "message"+messages.id;
-  msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
-  msg.style.padding = "10px"
-  msg.style.color = "white"
-  msg.style.borderRadius = "10px"
-  if (messages.username == username) {
-      div.style.textAlign = "right"
-      msg.style.backgroundColor = "blue"
-  } else {
-      div.style.textAlign = "left"
-      msg.style.backgroundColor = "grey"
-      if (starting == false) {
-        sound("assets/notify.wav")
-        navigator.vibrate(150, 150, 150)
-      }
-  }
-  if (messages.reply == "")  {
-    msg.innerHTML = messages.username + ":<br>" + censor(messages.message)
-  } else {
-    if (document.getElementById("message"+messages.reply.id) != null) {
-      msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + censor(messages.reply.message) + "\"</i><br>" + censor(messages.message)
-      msg.onclick = function show() {
-          document.getElementById("message"+messages.reply.id).scrollIntoView(false)
-          let bgc = document.getElementById("message"+messages.reply.id).style.backgroundColor;
-          if (bgc == "blue") {
-            document.getElementById("message"+messages.reply.id).style.backgroundColor = "cyan"
-          } else {
-              document.getElementById("message"+messages.reply.id).style.backgroundColor = "lightgray"
-          }
-          let bgres = setTimeout(function() {
-              document.getElementById("message"+messages.reply.id).style.backgroundColor = bgc
-          }, 1000)
-          msg.onclick = function() {
-              document.getElementById("message"+messages.reply.id).style.backgroundColor = bgc;
-              clearTimeout(bgres)
-              show()
-          }
-      }
-      let thisMsg = messages
-      db.ref("messages/").on("child_removed", function (snapshot) {
-          if (snapshot.val().id == thisMsg.reply.id) {
-              document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br>" + censor(messages.message)
-          }
-      })
-    } else {
-      msg.innerHTML = messages.username + ":<br>" + messages.message
+    let isValidUrl = urlString=> {
+	  	let urlPattern = new RegExp('^(https?:\\/\\/)?'+
+	    '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+
+	    '((\\d{1,3}\\.){3}\\d{1,3}))'+
+	    '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+
+	    '(\\?[;&a-z\\d%_.~+=-]*)?'+
+	    '(\\#[-a-z\\d_]*)?$','i');
+	    return !!urlPattern.test(urlString);
     }
-  }
-  } else {
-      console.log("else")
-  msg = document.createElement("div")
-  msg.id = "message"+messages.id;
-  msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
-  msg.style.padding = "10px"
-  msg.style.color = "white"
-  msg.style.borderRadius = "10px"
-  msg.innerHTML = messages.username + ":"
-  if (messages.username == username) {
-      div.style.textAlign = "right"
-      msg.style.backgroundColor = "blue"
-  } else {
-      div.style.textAlign = "left"
-      msg.style.backgroundColor = "grey"
-      if (starting == false) {
-        sound("assets/notify.wav")
-        navigator.vibrate(150, 150, 150)
+    msg = document.createElement("div")
+    msg.id = "message"+messages.id;
+    msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
+    msg.style.padding = "10px"
+    msg.style.color = "white"
+    msg.style.borderRadius = "10px"
+    if (messages.username == username) {
+        div.style.textAlign = "right"
+        msg.style.backgroundColor = "blue"
+    } else {
+        div.style.textAlign = "left"
+        msg.style.backgroundColor = "grey"
+        if (starting == false) {
+          sound("assets/notify.wav")
+          navigator.vibrate(150, 150, 150)
+        }
+    }
+    if (messages.reply == "")  {
+      if (isValidUrl(messages.message) == false) {
+        msg.innerHTML = messages.username + ":<br>" + censor(messages.message)
+      } else {
+        if (messages.message.slice(0, 2) == "ww") {
+          msg.innerHTML = messages.username + ":<br><a href='https://"+messages.message+"' target='_blank' style='color: lightgrey'>" + censor(messages.message) + "</a>"
+        } else {
+          msg.innerHTML = messages.username + ":<br><a href='"+messages.message+"' target='_blank' style='color: lightgrey'>" + censor(messages.message) + "</a>"
+        }
       }
-  }
-  msg.appendChild(document.createElement("br"));
-  let imgLoading = document.createElement("label")
-  imgLoading.innerHTML = "Loading Image";
-  msg.appendChild(imgLoading)
-  let img = document.createElement("img")
-  img.style.width = "90%"
-  img.src = messages.message
-  img.onload = function() {
+    } else {
+      if (document.getElementById("message"+messages.reply.id) != null) {
+        if (isValidUrl(messages.message) == false) {
+          msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + censor(messages.reply.message) + "\"</i><br>" + censor(messages.message)
+        } else {
+          if (messages.message.slice(0, 2) == "ww") {
+            msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + censor(messages.reply.message) + "\"</i><br><a href='https://"+messages.message+"' target='_blank' style='color: lightgrey'>" + censor(messages.message) + "</a>"
+          } else {
+            msg.innerHTML = messages.username + " replied to " + messages.reply.to + ":<br><i>\"" + censor(messages.reply.message) + "\"</i><br><a href='"+messages.message+"' target='_blank' style='color: lightgrey'>" + censor(messages.message) + "</a>"
+          }
+        }
+        msg.onclick = function show() {
+            document.getElementById("message"+messages.reply.id).scrollIntoView(false)
+            let bgc = document.getElementById("message"+messages.reply.id).style.backgroundColor;
+            if (bgc == "blue") {
+              document.getElementById("message"+messages.reply.id).style.backgroundColor = "cyan"
+            } else {
+                document.getElementById("message"+messages.reply.id).style.backgroundColor = "lightgray"
+            }
+            let bgres = setTimeout(function() {
+                document.getElementById("message"+messages.reply.id).style.backgroundColor = bgc
+            }, 1000)
+            msg.onclick = function() {
+                document.getElementById("message"+messages.reply.id).style.backgroundColor = bgc;
+                clearTimeout(bgres)
+                show()
+            }
+        }
+        let thisMsg = messages
+        db.ref("messages/").on("child_removed", function (snapshot) {
+            if (snapshot.val().id == thisMsg.reply.id) {
+              if (isValidUrl(messages.message) == false) {
+                document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br>" + censor(messages.message)
+              } else {
+                if (messages.message.slice(0, 2) == "ww") {
+                  document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br><a href='https://"+messages.message+"' target='_blank' style='color: lightgrey'>" + censor(messages.message) + "</a>"
+                } else {
+                  document.getElementById("message"+thisMsg.id).innerHTML = thisMsg.username + ":<br><a href='"+messages.message+"' target='_blank' style='color: lightgrey'>" + censor(messages.message) + "</a>"
+                }
+              }
+            }
+        })
+      } else {
+        msg.innerHTML = messages.username + ":<br>" + messages.message
+      }
+    }
+  } else {
+    msg = document.createElement("div")
+    msg.id = "message"+messages.id;
+    msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
+    msg.style.padding = "10px"
+    msg.style.color = "white"
+    msg.style.borderRadius = "10px"
+    msg.innerHTML = messages.username + ":"
+    if (messages.username == username) {
+        div.style.textAlign = "right"
+        msg.style.backgroundColor = "blue"
+    } else {
+        div.style.textAlign = "left"
+        msg.style.backgroundColor = "grey"
+        if (starting == false) {
+          sound("assets/notify.wav")
+          navigator.vibrate(150, 150, 150)
+        }
+    }
+    msg.appendChild(document.createElement("br"));
+    let imgLoading = document.createElement("label")
+    imgLoading.innerHTML = "Loading "+messages.type;
+    msg.appendChild(imgLoading)
+    let img;
+    if (messages.type == "image") {
+      img = document.createElement("img")
+    } else if (messages.type == "audio") {
+      img = document.createElement("audio")
+    } else if (messages.type == "video") {
+      img = document.createElement("video")
+    } else {
+      img = document.createElement("a")
+    }
+    img.style.width = "90%"
+    if (messages.type == "image" || messages.type == "audio" || messages.type == "video") {
+      img.src = messages.message
+      if (messages.type == "audio") {
+        img.oncanplaythrough = function() {
+          msg.appendChild(img)
+          imgLoading.remove()
+          img.controls = true;
+        }
+      } else {
+        img.onload = function() {
+          msg.appendChild(img)
+          imgLoading.remove()
+          img.controls = true;
+        }
+      }
+    } else {
       msg.appendChild(img)
       imgLoading.remove()
-  }
+      img.style.color = "lightgrey"
+      img.href = messages.message;
+      img.innerHTML = messages.fileName;
+    } 
   }
   let scrollable = (Math.abs(document.getElementById("chat").scrollHeight - document.getElementById("chat").scrollTop - document.getElementById("chat").clientHeight))
   div.appendChild(msg)
@@ -377,7 +433,7 @@ db.ref("user/").on("child_changed", function (snapshot) {
 })
 //Image Send
 document.getElementById("file").oninput = function() {
-    alert("Sending Image")
+    alert("Sending File")
     let file = document.getElementById("file").files[0]
     let storageRef = firebase.storage().ref();
     let imageRef = storageRef.child(file.name);
@@ -390,7 +446,8 @@ document.getElementById("file").oninput = function() {
                 id: timestamp,
                 reply: reply,
                 seen: false,
-                type: "image"
+                fileName: file.name,
+                type: file.type.split("/")[0]
             });
         })
     });

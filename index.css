@@ -6,12 +6,10 @@
     width: 100%;
     background-color: #b7b5b9;
 }
-input {
-    width: 70%;
+.input {
     height: 30px;
 }
-button {
-    width: 25%;
+.button {
     height: 38px;
 }
 @keyframes floatIn {
