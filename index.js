@@ -236,12 +236,14 @@ function createMessage(messages, starting) {
         div.style.backgroundColor = "black"
         div.style.textAlign = "center"
         div.style.userSelect = "none"
+        div.style.padding = "10px"
         animation(div, "floatIn", "0.5s")
         barrier.appendChild(div)
       if (JSON.parse(val.target.value).sender == username) {
       let unsend = document.createElement("button")
       unsend.innerHTML = "Unsend"
       unsend.value = val.target.value;
+      unsend.className = "button"
       div.appendChild(unsend)
       unsend.onclick = function(unsender) {
         if (unsender.target.value != undefined && unsender.target.value != "undefined" && JSON.parse(unsender.target.value).sender == username) {
@@ -257,6 +259,7 @@ function createMessage(messages, starting) {
     let replyBtn = document.createElement("button")
     replyBtn.innerHTML = "Reply"
     replyBtn.value = val.target.value;
+    replyBtn.className = "button"
     div.appendChild(replyBtn)
     replyBtn.onclick = function(replyer) {
       let data = JSON.parse(replyer.target.value)
@@ -359,7 +362,9 @@ firebase.database().ref().child("messages/").get().then((snapshot) => {
 Tips:<br>
 &nbsp;&nbsp;1. Long press on the message to unsend it or to reply to the message<br>
 &nbsp;&nbsp;2. The message may be marked as seen, but the user may not have actually seen it, but loaded in background which made the message seen<br>
-&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message`
+&nbsp;&nbsp;3. Click on the message with reply to jump to the replied message
+&nbsp;&nbsp;4. Type a link and send it. When users click the link, the link will open
+&nbsp;&nbsp;5. You can now send images, videos, audios, and files by clicking the button beside the message input`
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
