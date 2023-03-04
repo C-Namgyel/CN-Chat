@@ -70,7 +70,18 @@ function createMessage(messages, starting) {
   let div = document.createElement("div")
   div.style.userSelect = "none"
   div.style.padding = "15px"
-  let msg;
+  let msg = document.createElement("div")
+  msg.id = "message"+messages.id;
+  let msgType = ""
+  if (messages.type == "txtMessage") {
+    msgType = "txtMessage"
+  } else {
+    msgType = "file"
+  }
+  msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message, fileName: messages.fileName, type: msgType})
+  msg.style.padding = "10px"
+  msg.style.color = "white"
+  msg.style.borderRadius = "10px"
   if (messages.type == "txtMessage") {
     let isValidUrl = urlString=> {
 	  	let urlPattern = new RegExp('^(https?:\\/\\/)?'+
@@ -81,12 +92,6 @@ function createMessage(messages, starting) {
 	    '(\\#[-a-z\\d_]*)?$','i');
 	    return !!urlPattern.test(urlString);
     }
-    msg = document.createElement("div")
-    msg.id = "message"+messages.id;
-    msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
-    msg.style.padding = "10px"
-    msg.style.color = "white"
-    msg.style.borderRadius = "10px"
     if (messages.username == username) {
         div.style.textAlign = "right"
         msg.style.backgroundColor = "blue"
@@ -155,12 +160,6 @@ function createMessage(messages, starting) {
       }
     }
   } else {
-    msg = document.createElement("div")
-    msg.id = "message"+messages.id;
-    msg.value = JSON.stringify({id: messages.id, sender: messages.username, message: messages.message})
-    msg.style.padding = "10px"
-    msg.style.color = "white"
-    msg.style.borderRadius = "10px"
     msg.innerHTML = messages.username + ":"
     if (messages.username == username) {
         div.style.textAlign = "right"
@@ -250,7 +249,13 @@ function createMessage(messages, starting) {
           if (confirm("Unsend this message?") == true) {
             let value = JSON.parse(unsender.target.value).id;
             firebase.database().ref('messages/'+value).remove()
-            unsender.target.value = undefined;
+            let storageRef = firebase.storage().ref();
+            if (JSON.parse(unsender.target.value).type != "txtMessage") {
+              let storageDel = storageRef.child(JSON.parse(unsender.target.value).sender+"/"+JSON.parse(unsender.target.value).fileName);
+              storageDel.delete().then(() => {
+              })
+              unsender.target.value = undefined;
+            }
           }
         }
         barrier.remove()
@@ -438,22 +443,51 @@ db.ref("user/").on("child_changed", function (snapshot) {
 })
 //Image Send
 document.getElementById("file").oninput = function() {
-    alert("Sending File")
     let file = document.getElementById("file").files[0]
+    let filename = file.name;
     let storageRef = firebase.storage().ref();
-    let imageRef = storageRef.child(file.name);
-    imageRef.put(file).then((snapshot) => {
-        imageRef.getDownloadURL().then((Url) => {
-            let timestamp = Date.now();
-            db.ref("messages/" + timestamp).set({
-                username: username,
-                message: Url,
-                id: timestamp,
-                reply: reply,
-                seen: false,
-                fileName: file.name,
-                type: file.type.split("/")[0]
-            });
-        })
-    });
+    let imageRef = storageRef.child(username + "/" + file.name);
+    let uploadTask = imageRef.put(file)
+    let div = document.createElement("div")
+    div.style.userSelect = "none"
+    div.style.padding = "15px"
+    let msg;
+    msg = document.createElement("div")
+    msg.style.padding = "10px"
+    msg.style.color = "white"
+    msg.style.borderRadius = "10px"
+    div.style.textAlign = "right"
+    msg.style.backgroundColor = "blue"
+    msg.innerHTML = "Sending File..."
+    let scrollable = (Math.abs(document.getElementById("chat").scrollHeight - document.getElementById("chat").scrollTop - document.getElementById("chat").clientHeight))
+    div.appendChild(msg)
+    document.getElementById("chat").appendChild(div);
+    if (scrollable < 100) {
+      document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
+    }
+    uploadTask.on('state_changed', (snapshot) => {
+      let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      msg.innerHTML = file.name + "<br>" + (parseFloat(snapshot.bytesTransferred) / 1048576).toFixed(2) + "mb /" + (parseFloat(snapshot.totalBytes) / 1048576).toFixed(2) + "mb<br>" + parseFloat(progress).toFixed(2) + "%";
+    },(error) => {
+      alert("Upload Failed")
+      console.log(error)
+      div.remove()
+      // Handle unsuccessful uploads
+    }, () => {
+      div.remove()
+      imageRef.getDownloadURL().then((Url) => {
+        let timestamp = Date.now();
+        db.ref("messages/" + timestamp).set({
+            username: username,
+            message: Url,
+            id: timestamp,
+            reply: reply,
+            seen: false,
+            fileName: filename,
+            type: file.type.split("/")[0]
+        });
+      })
+    }
+  );
+
 }
