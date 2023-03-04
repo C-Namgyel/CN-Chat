@@ -28,7 +28,7 @@ function send(message, reply) {
     id: timestamp,
     reply: reply,
     seen: false,
-    type: "text"
+    type: "txtMessage"
   });
 }
 function sound(sound) {
@@ -71,7 +71,7 @@ function createMessage(messages, starting) {
   div.style.userSelect = "none"
   div.style.padding = "15px"
   let msg;
-  if (messages.type == "text") {
+  if (messages.type == "txtMessage") {
     let isValidUrl = urlString=> {
 	  	let urlPattern = new RegExp('^(https?:\\/\\/)?'+
 	    '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+
@@ -190,7 +190,7 @@ function createMessage(messages, starting) {
     img.style.width = "90%"
     if (messages.type == "image" || messages.type == "audio" || messages.type == "video") {
       img.src = messages.message
-      if (messages.type == "audio") {
+      if (messages.type == "audio" || messages.type == "video") {
         img.oncanplaythrough = function() {
           msg.appendChild(img)
           imgLoading.remove()
@@ -200,7 +200,6 @@ function createMessage(messages, starting) {
         img.onload = function() {
           msg.appendChild(img)
           imgLoading.remove()
-          img.controls = true;
         }
       }
     } else {
