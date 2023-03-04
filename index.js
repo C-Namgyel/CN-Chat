@@ -12,10 +12,18 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 //Username
+function askUsername() {
+  let name = prompt("Please Enter Your Name")
+  if (name.trim() == "") {
+    askUsername()
+  } else {
+    localStorage.username = name
+  }
+}
 var username
-if ("username" in localStorage == false) {
+if ("username" in localStorage == false || localStorage.username.trim() == "") {
   username = prompt("Please Enter Your Name")
-  localStorage.username = username
+  askUsername()
 } else {
   username = localStorage.username
 }
