@@ -235,6 +235,7 @@ function createMessage(messages, starting) {
         div.style.zIndex = 2;
         div.style.backgroundColor = "black"
         div.style.textAlign = "center"
+        div.style.userSelect = "none"
         animation(div, "floatIn", "0.5s")
         barrier.appendChild(div)
       if (JSON.parse(val.target.value).sender == username) {
@@ -307,16 +308,16 @@ document.getElementById("message-btn").onclick = function() {
   document.getElementById("message-input").focus()
   reply = "";
   document.getElementById("replyDiv").hidden = true;
-  document.getElementById("message-input").style.width = "75%";
+  document.getElementById("message-input").style.width = "85%";
   document.getElementById("message-btn").hidden = true;
 }
 document.getElementById("message-input").onkeydown = function(key) {
   setTimeout(function() {
     if (document.getElementById("message-input").value.trim() == "") {
-      document.getElementById("message-input").style.width = "75%";
+      document.getElementById("message-input").style.width = "85%";
       document.getElementById("message-btn").hidden = true;
     } else {
-      document.getElementById("message-input").style.width = "55%";
+      document.getElementById("message-input").style.width = "65%";
       document.getElementById("message-btn").hidden = false;
     }
   }, 1)
