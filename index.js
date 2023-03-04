@@ -454,7 +454,7 @@ document.getElementById("file").oninput = function() {
     let file = document.getElementById("file").files[0]
     let filename = file.name;
     let storageRef = firebase.storage().ref();
-    let imageRef = storageRef.child(username + "/" + file.name);
+    let imageRef = storageRef.child(username + "/" + filename);
     let uploadTask = imageRef.put(file)
     let div = document.createElement("div")
     div.style.userSelect = "none"
@@ -475,7 +475,7 @@ document.getElementById("file").oninput = function() {
     }
     uploadTask.on('state_changed', (snapshot) => {
       let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      msg.innerHTML = file.name + "<br>" + (parseFloat(snapshot.bytesTransferred) / 1048576).toFixed(2) + "mb /" + (parseFloat(snapshot.totalBytes) / 1048576).toFixed(2) + "mb<br>" + parseFloat(progress).toFixed(2) + "%";
+      msg.innerHTML = filename + "<br>" + (parseFloat(snapshot.bytesTransferred) / 1048576).toFixed(2) + "mb /" + (parseFloat(snapshot.totalBytes) / 1048576).toFixed(2) + "mb<br>" + parseFloat(progress).toFixed(2) + "%";
     },(error) => {
       alert("Upload Failed")
       console.log(error)
