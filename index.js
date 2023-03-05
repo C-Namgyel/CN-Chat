@@ -74,6 +74,81 @@ function censor(txt) {
     }
     return(newTxt)
 }
+function longPressed(val) {
+    var longPress = setTimeout(function() {
+    if (val.target.value != undefined) {
+        let barrier = document.createElement("div")
+        barrier.style.position = "fixed"
+        barrier.style.width = "100%"
+        barrier.style.height = "100%"
+        barrier.style.left = "0px"
+        barrier.style.top = "0px"
+        barrier.style.zIndex = 1;
+        document.body.appendChild(barrier)
+        let div = document.createElement("div")
+        div.style.position = "fixed"
+        div.style.width = "100%"
+        div.style.left = "0px"
+        div.style.bottom = "0%"
+        div.style.zIndex = 2;
+        div.style.backgroundColor = "black"
+        div.style.textAlign = "center"
+        div.style.userSelect = "none"
+        div.style.padding = "10px"
+        animation(div, "floatIn", "0.5s")
+        barrier.appendChild(div)
+      if (JSON.parse(val.target.value).sender == username) {
+      let unsend = document.createElement("button")
+      unsend.innerHTML = "Unsend"
+      unsend.value = val.target.value;
+      unsend.className = "button"
+      div.appendChild(unsend)
+      unsend.onclick = function(unsender) {
+        if (unsender.target.value != undefined && unsender.target.value != "undefined" && JSON.parse(unsender.target.value).sender == username) {
+          if (confirm("Unsend this message?") == true) {
+            let value = JSON.parse(unsender.target.value).id;
+            firebase.database().ref('messages/'+value).remove()
+            let storageRef = firebase.storage().ref();
+            if (JSON.parse(unsender.target.value).type != "txtMessage") {
+              let storageDel = storageRef.child(JSON.parse(unsender.target.value).sender+"/"+JSON.parse(unsender.target.value).fileName);
+              storageDel.delete().then(() => {
+              })
+              unsender.target.value = undefined;
+            }
+          }
+        }
+        barrier.remove()
+      }
+      }
+    let replyBtn = document.createElement("button")
+    replyBtn.innerHTML = "Reply"
+    replyBtn.value = val.target.value;
+    replyBtn.className = "button"
+    div.appendChild(replyBtn)
+    replyBtn.onclick = function(replyer) {
+      let data = JSON.parse(replyer.target.value)
+      reply = {
+        id: data.id,
+        to: data.sender,
+        message: data.message
+      }
+      barrier.remove()
+      document.getElementById("message-input").focus()
+      document.getElementById("replyDiv").hidden = false;
+      document.getElementById("replyTxt").innerHTML = "Replying to " + data.sender + "<br><i>" + censor(data.message) + "</i>"
+    }
+    barrier.onclick = function() {
+      barrier.remove()
+    }
+    }
+  }, 500)
+  val.target.ontouchmove = function() {
+      clearTimeout(longPress)
+  }
+  val.target.ontouchend = function() {
+      clearTimeout(longPress)
+  }
+  }
 function createMessage(messages, starting) {
   let div = document.createElement("div")
   div.style.userSelect = "none"
@@ -168,6 +243,17 @@ function createMessage(messages, starting) {
       }
     }
   } else {
+    function isInViewport(element) {
+        let conditionBottom = element.getBoundingClientRect().bottom <= document.getElementById("chat").getBoundingClientRect().height + document.getElementById("chat").getBoundingClientRect().top
+        let conditionTop = element.getBoundingClientRect().top >= document.getElementById("chat").getBoundingClientRect().top
+        if (conditionBottom == true && conditionTop == true) {
+            return(true)
+        } else {
+            return(false)
+        }
+    }
+    let imgHolder = document.createElement("div")
+    imgHolder.style.width = "100%"
     msg.innerHTML = messages.username + ":"
     if (messages.username == username) {
         div.style.textAlign = "right"
@@ -180,7 +266,11 @@ function createMessage(messages, starting) {
           navigator.vibrate(150, 150, 150)
         }
     }
-    msg.appendChild(document.createElement("br"));
+    msg.appendChild(imgHolder)
+    imgHolder.value = msg.value;
+    imgHolder.ontouchstart = function(func) {
+      longPressed(func)
+    }
     let imgLoading = document.createElement("label")
     imgLoading.innerHTML = "Loading "+messages.type;
     msg.appendChild(imgLoading)
@@ -191,21 +281,53 @@ function createMessage(messages, starting) {
       img = document.createElement("audio")
     } else if (messages.type == "video") {
       img = document.createElement("video")
+      img.allowfullscreen = true
     } else {
       img = document.createElement("a")
     }
-    img.style.width = "90%"
+    img.style.width = "75%"
     if (messages.type == "image" || messages.type == "audio" || messages.type == "video") {
-      img.src = messages.message
+        function setSrc() {
+            if (img.src == "" || img.src == undefined) {
+                img.src = messages.message
+                if (messages.type == "image") {
+                    img.onclick = function(imgo) {
+                        document.getElementById("imgPreview").style.width = "auto";
+                        document.getElementById("imgPreview").style.height = "auto"
+                        if (imgo.target.clientHeight - screen.height < imgo.target.clientWidth - screen.width) {
+                            document.getElementById("imgPreview").style.width = "100%";
+                            document.getElementById("imgPreview").style.height = "auto"
+                        } else {
+                            document.getElementById("imgPreview").style.width = "auto";
+                            document.getElementById("imgPreview").style.height = "100%"
+                        }
+                        document.getElementById("vp").content = "width=device-width, initial-scale=1, user-scalable=yes"
+                        document.getElementById("imgPreviewHolder").hidden = false;
+                        document.getElementById("imgPreview").src = imgo.target.src;
+                        document.getElementById("imgPreviewHolder").onclick = function() {
+                            document.getElementById("imgPreviewHolder").hidden = true;
+                            document.getElementById("vp").content = "width=device-width, initial-scale=1, user-scalable=no"
+                        }
+                    }
+                }
+            }
+        }
+        document.getElementById("chat").addEventListener('scroll', function() {
+            if (isInViewport(div) == true) {
+                setSrc()
+            }
+            setSrc()
+        })
+        setSrc()
       if (messages.type == "audio" || messages.type == "video") {
         img.oncanplaythrough = function() {
-          msg.appendChild(img)
+          imgHolder.appendChild(img)
           imgLoading.remove()
           img.controls = true;
         }
       } else {
         img.onload = function() {
-          msg.appendChild(img)
+          imgHolder.appendChild(img)
           imgLoading.remove()
         }
       }
@@ -215,7 +337,7 @@ function createMessage(messages, starting) {
       img.style.color = "lightgrey"
       img.href = messages.message;
       img.innerHTML = messages.fileName;
-    } 
+    }
   }
   let scrollable = (Math.abs(document.getElementById("chat").scrollHeight - document.getElementById("chat").scrollTop - document.getElementById("chat").clientHeight))
   div.appendChild(msg)
@@ -223,80 +345,8 @@ function createMessage(messages, starting) {
   if (scrollable < 100) {
     document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
   }
-  msg.ontouchstart = function(val) {
-    let longPress = setTimeout(function() {
-    if (val.target.value != undefined) {
-        let barrier = document.createElement("div")
-        barrier.style.position = "fixed"
-        barrier.style.width = "100%"
-        barrier.style.height = "100%"
-        barrier.style.left = "0px"
-        barrier.style.top = "0px"
-        barrier.style.zIndex = 1;
-        document.body.appendChild(barrier)
-        let div = document.createElement("div")
-        div.style.position = "fixed"
-        div.style.width = "100%"
-        div.style.left = "0px"
-        div.style.bottom = "0%"
-        div.style.zIndex = 2;
-        div.style.backgroundColor = "black"
-        div.style.textAlign = "center"
-        div.style.userSelect = "none"
-        div.style.padding = "10px"
-        animation(div, "floatIn", "0.5s")
-        barrier.appendChild(div)
-      if (JSON.parse(val.target.value).sender == username) {
-      let unsend = document.createElement("button")
-      unsend.innerHTML = "Unsend"
-      unsend.value = val.target.value;
-      unsend.className = "button"
-      div.appendChild(unsend)
-      unsend.onclick = function(unsender) {
-        if (unsender.target.value != undefined && unsender.target.value != "undefined" && JSON.parse(unsender.target.value).sender == username) {
-          if (confirm("Unsend this message?") == true) {
-            let value = JSON.parse(unsender.target.value).id;
-            firebase.database().ref('messages/'+value).remove()
-            let storageRef = firebase.storage().ref();
-            if (JSON.parse(unsender.target.value).type != "txtMessage") {
-              let storageDel = storageRef.child(JSON.parse(unsender.target.value).sender+"/"+JSON.parse(unsender.target.value).fileName);
-              storageDel.delete().then(() => {
-              })
-              unsender.target.value = undefined;
-            }
-          }
-        }
-        barrier.remove()
-      }
-      }
-    let replyBtn = document.createElement("button")
-    replyBtn.innerHTML = "Reply"
-    replyBtn.value = val.target.value;
-    replyBtn.className = "button"
-    div.appendChild(replyBtn)
-    replyBtn.onclick = function(replyer) {
-      let data = JSON.parse(replyer.target.value)
-      reply = {
-        id: data.id,
-        to: data.sender,
-        message: data.message
-      }
-      barrier.remove()
-      document.getElementById("message-input").focus()
-      document.getElementById("replyDiv").hidden = false;
-      document.getElementById("replyTxt").innerHTML = "Replying to " + data.sender + "<br><i>" + censor(data.message) + "</i>"
-    }
-    barrier.onclick = function() {
-      barrier.remove()
-    }
-    }
-  }, 500)
-  msg.ontouchmove = function(mov) {
-      clearTimeout(longPress)
-  }
-  val.target.ontouchend = function() {
-      clearTimeout(longPress)
-  }
+  msg.ontouchstart = function(func) {
+      longPressed(func)
   }
   if (messages.seen == true) {
     let seenElem = document.createElement("img")
@@ -354,17 +404,18 @@ document.getElementById("replyClose").onclick = function() {
 //Messages
 var starting = true;
 firebase.database().ref().child("messages/").get().then((snapshot) => {
+  document.getElementById("chat").innerHTML = ""
   if (snapshot.exists()) {
     for (r = 0; r < Object.keys(snapshot.val()).length; r++) {
       createMessage(Object.values(snapshot.val())[r], starting);
     }
   }
   starting = false
-  document.getElementById("chat").style.scrollBehavior = "smooth"
   //Notify
   let div = document.createElement("div")
   div.style.userSelect = "none"
   div.style.padding = "15px"
+  div.id="systemMsg"
   let msg = document.createElement("div")
   msg.style.padding = "10px"
   msg.style.color = "white"
@@ -382,6 +433,7 @@ Tips:<br>
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
+  document.getElementById("chat").style.scrollBehavior = "smooth"
 }).catch((error) => {
   console.error(error);
 });
@@ -405,57 +457,47 @@ fetchChat.on("child_changed", function (snapshot) {
   document.getElementById("message"+snapshot.val().id).appendChild(seenElem)
 })
 //Online status
-function getTime() {
-  function str(int) {
-    return(""+int)
-  }
-  let t = new Date()
-  let year = t.getUTCFullYear()
-  let month = t.getUTCMonth()  + 1;
-  let date = t.getUTCDate()
-  let hour = t.getUTCHours()
-  let minute = t.getUTCMinutes()
-  let second = t.getUTCSeconds()
-  if (month < 10) {
-    month = "0"+month
-  }
-  if (date < 10) {
-    date = "0"+date
-  }
-  if (hour < 10) {
-    hour = "0"+hour
-  }
-  if (minute < 10) {
-    minute = "0"+minute
-  }
-  if (second < 10) {
-    second = "0"+second
-  }
-  return(str(year)+str(month)+str(date)+str(hour)+str(minute)+str(second))
-}
-var userPings = {}
-setInterval(function() {
-  if (starting == false) {
-  db.ref("user/" + username).set({
-    user: username,
-    ping: getTime()
-  });
-  for (o = 0; o < Object.keys(userPings).length; o++) {
-    userPings[Object.keys(userPings)[o]] = parseInt(userPings[Object.keys(userPings)[o]]) - 1 ;
-    if (userPings[Object.keys(userPings)[o]] < 0) {
-      Reflect.deleteProperty(userPings, Object.keys(userPings)[o]);
+function dynamicSort(property) {
+    var sortOrder = 1;
+    if(property[0] === "-") {
+        sortOrder = -1;
+        property = property.substr(1);
     }
+    return function (a,b) {
+        /* next line works with strings and numbers, 
+         * and you may want to customize it to your needs
+         */
+        var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
+        return result * sortOrder;
+    }
+}
+var online = []
+var onlineStat = db.ref("online/"+username)
+onlineStat.set('online');
+onlineStat.onDisconnect().set('offline');
+db.ref("online/").on('value', function(snapshot) {
+  if (snapshot.val()) {
+    online = []
+    for (let ons in snapshot.val()) {
+        online.push({name: ons, status: snapshot.val()[ons]});
+    }
+    online.sort(dynamicSort("-status"));
+    document.getElementById("online").innerHTML = "Online: "+online.filter(word => word.status == "online").length;
   }
-  document.getElementById("online").innerHTML = "Online: "+Object.keys(userPings).length;
-  }
-}, 1000)
-db.ref("user/").on("child_changed", function (snapshot) {
-  userPings[snapshot.val().user] = 5;
-})
+});
+document.onIdle = function () {
+  onlineStat.set('idle');
+}
+document.onAway = function () {
+  onlineStat.set('away');
+}
+document.onBack = function (isIdle, isAway) {
+  onlineStat.set('online');
+}
 document.getElementById("online").onclick = function() {
     let onlines = ""
-    for (let on = 0; on < Object.keys(userPings).length; on++) {
-        onlines += (on + 1) + ". " + Object.keys(userPings)[on] + "\n"
+    for (let on = 0; on < online.length; on++) {
+        onlines += (on + 1) + ". " + online[on].name + ": " + online[on].status + "\n"
     }
     alert(onlines)
 }

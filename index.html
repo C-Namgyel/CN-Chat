@@ -1,7 +1,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta id="vp" name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <title>CN Chat</title>
     <link rel="icon" type="image/x-icon" href="assets/logo.png">
     <link rel="stylesheet" href="index.css">
@@ -11,17 +11,20 @@
       <label style="text-align: center; font-size: 200%; font-weight: bolder;">CN Chat</label>
       <label style="float: right;" id="online">Online: 0</label>
     </header>
+    <div id="imgPreviewHolder" style="width: 100%; height: 100%; position: fixed; top: 0px; left: 0px; background-color: rgb(0, 0, 0, 0.90); z-index: 1;" hidden><img style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%)" id="imgPreview"></div>
     <div id="chat" style="position: absolute; height: 80%; left: 0px; top: 10%; width: 100%; overflow: auto; overflow-wrap: break-word; scroll-behavior: auto;">
+        Connecting...
+    </div>
       <div id="message-form">
         <div id="replyDiv" style="text-align: left; position: relative; left: 2.5%; width: 95%" hidden><label id="replyTxt" style="text-align: left; white-space: nowrap"></label><label style="position: absolute; top: 0px; right: 2.5%;" id="replyClose">×</label></div>
         <button class="button" style="width: 10%; text-align: center;" onclick="document.getElementById('file').click()"><input type="file" id="file" accept="" style="display: none;"><img src="assets/attackment.png" style="height: 50%;"></button>
         <input class="input" id="message-input" style="width: 85%;" type="text">
         <button class="button" id="message-btn" style="width: 20%;" hidden>Send</button>
       </div>
-    </div>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-storage.js"></script>
+    <script src='https://www.firebase.com/js/libs/idle.js'></script>
     <script src="index.js"></script>
   </body>
 </html>
