@@ -148,6 +148,12 @@ function longPressed(val) {
   val.target.ontouchend = function() {
       clearTimeout(longPress)
   }
+  val.target.onmousemove = function() {
+      clearTimeout(longPress)
+  }
+  val.target.onmouseup = function() {
+      clearTimeout(longPress)
+  }
   }
 function createMessage(messages, starting) {
   let div = document.createElement("div")
@@ -271,6 +277,9 @@ function createMessage(messages, starting) {
     imgHolder.ontouchstart = function(func) {
       longPressed(func)
     }
+    imgHolder.onmousedown = function(func) {
+      longPressed(func)
+    }
     let imgLoading = document.createElement("label")
     imgLoading.innerHTML = "Loading "+messages.type;
     msg.appendChild(imgLoading)
@@ -348,6 +357,9 @@ function createMessage(messages, starting) {
   msg.ontouchstart = function(func) {
       longPressed(func)
   }
+  msg.onmousedown = function(func) {
+      longPressed(func)
+    }
   if (messages.seen == true) {
     let seenElem = document.createElement("img")
     seenElem.src = "assets/msgSeen.png"
