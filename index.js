@@ -396,6 +396,19 @@ document.getElementById("message-input").onkeydown = function(key) {
     document.getElementById("message-input").style.width = "75%";
     document.getElementById("message-btn").hidden = true;
   }
+  
+  if (typingTime != undefined) {
+    clearTimeout(typingTime)
+  }
+  if (typing == false) {
+    db.ref("online/" + username).set("typing...");
+  }
+  typing = true;
+  typingTime = setTimeout(function() {
+    typing = false;
+    db.ref("online/" + username).set("online");
+    typingTime = undefined
+  }, 1000)
 }
 document.getElementById("replyClose").onclick = function() {
     reply = "";
@@ -555,17 +568,3 @@ document.getElementById("file").oninput = function() {
 //Typing
 var typing = false;
 let typingTime = undefined;
-document.getElementById("message-input").onkeydown = function() {
-  if (typingTime != undefined) {
-    clearTimeout(typingTime)
-  }
-  if (typing == false) {
-    db.ref("online/" + username).set("typing...");
-  }
-  typing = true;
-  typingTime = setTimeout(function() {
-    typing = false;
-    db.ref("online/" + username).set("online");
-    typingTime = undefined
-  }, 1000)
-}
