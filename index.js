@@ -75,7 +75,7 @@ function censor(txt) {
     return(newTxt)
 }
 function longPressed(val) {
-    var longPress = setTimeout(function() {
+    let longPress = setTimeout(function() {
     if (val.target.value != undefined) {
         let barrier = document.createElement("div")
         barrier.style.position = "fixed"
@@ -98,7 +98,7 @@ function longPressed(val) {
         animation(div, "floatIn", "0.5s")
         barrier.appendChild(div)
       if (JSON.parse(val.target.value).sender == username) {
-      let unsend = document.createElement("button")
+        let unsend = document.createElement("button")
       unsend.innerHTML = "Unsend"
       unsend.value = val.target.value;
       unsend.className = "button"
@@ -146,12 +146,6 @@ function longPressed(val) {
       clearTimeout(longPress)
   }
   val.target.ontouchend = function() {
-      clearTimeout(longPress)
-  }
-  val.target.onmousemove = function() {
-      clearTimeout(longPress)
-  }
-  val.target.onmouseup = function() {
       clearTimeout(longPress)
   }
   }
@@ -274,12 +268,6 @@ function createMessage(messages, starting) {
     }
     msg.appendChild(imgHolder)
     imgHolder.value = msg.value;
-    imgHolder.ontouchstart = function(func) {
-      longPressed(func)
-    }
-    imgHolder.onmousedown = function(func) {
-      longPressed(func)
-    }
     let imgLoading = document.createElement("label")
     imgLoading.innerHTML = "Loading "+messages.type;
     msg.appendChild(imgLoading)
@@ -298,6 +286,7 @@ function createMessage(messages, starting) {
     if (messages.type == "image" || messages.type == "audio" || messages.type == "video") {
         function setSrc() {
             if (img.src == "" || img.src == undefined) {
+                
                 img.src = messages.message
                 if (messages.type == "image") {
                     img.onclick = function(imgo) {
@@ -321,13 +310,15 @@ function createMessage(messages, starting) {
                 }
             }
         }
+        if (isInViewport(div) == true) {
+                setSrc()
+        }
         document.getElementById("chat").addEventListener('scroll', function() {
             if (isInViewport(div) == true) {
                 setSrc()
+                console.log("load")
             }
-            setSrc()
         })
-        setSrc()
       if (messages.type == "audio" || messages.type == "video") {
         img.oncanplaythrough = function() {
           imgHolder.appendChild(img)
@@ -357,9 +348,6 @@ function createMessage(messages, starting) {
   msg.ontouchstart = function(func) {
       longPressed(func)
   }
-  msg.onmousedown = function(func) {
-      longPressed(func)
-    }
   if (messages.seen == true) {
     let seenElem = document.createElement("img")
     seenElem.src = "assets/msgSeen.png"
@@ -441,7 +429,7 @@ Tips:<br>
 &nbsp;&nbsp;3. Click on the message with reply to jump to the replied message<br>
 &nbsp;&nbsp;4. Type a link and send it. When users click the link, the link will open<br>
 &nbsp;&nbsp;5. You can now send images, videos, audios, and files by clicking the button beside the message input<br>
-&nbsp;&nbsp;6. Click on the online count to know who all are currently online`
+&nbsp;&nbsp;6. Click on the online count to know who all are currently online or who all are typing`
   div.appendChild(msg)
   document.getElementById("chat").appendChild(div);
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight
@@ -476,9 +464,6 @@ function dynamicSort(property) {
         property = property.substr(1);
     }
     return function (a,b) {
-        /* next line works with strings and numbers, 
-         * and you may want to customize it to your needs
-         */
         var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
         return result * sortOrder;
     }
@@ -494,7 +479,11 @@ db.ref("online/").on('value', function(snapshot) {
         online.push({name: ons, status: snapshot.val()[ons]});
     }
     online.sort(dynamicSort("-status"));
-    document.getElementById("online").innerHTML = "Online: "+online.filter(word => word.status == "online").length;
+    let lab = "Online: "+online.filter(word => word.status == "online" || word.status == "typing...").length;
+    if (online.filter(word => word.status == "typing...").length != 0) {
+      lab += "<br>Typing: " + online.filter(word => word.status == "typing...").length
+    }
+    document.getElementById("online").innerHTML = lab;
   }
 });
 document.onIdle = function () {
@@ -562,4 +551,21 @@ document.getElementById("file").oninput = function() {
     }
   );
 
+}
+//Typing
+var typing = false;
+let typingTime = undefined;
+document.getElementById("message-input").onkeydown = function() {
+  if (typingTime != undefined) {
+    clearTimeout(typingTime)
+  }
+  if (typing == false) {
+    db.ref("online/" + username).set("typing...");
+  }
+  typing = true;
+  typingTime = setTimeout(function() {
+    typing = false;
+    db.ref("online/" + username).set("online");
+    typingTime = undefined
+  }, 1000)
 }
