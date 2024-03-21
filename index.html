@@ -4,7 +4,7 @@
     <meta id="vp" name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <title>CN Chat</title>
     <link rel="icon" type="image/x-icon" href="assets/logo.png">
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="style.css">
   </head>
   <body style="background-color: f3f2f3;">
     <header>
@@ -18,13 +18,13 @@
       <div id="message-form">
         <div id="replyDiv" style="text-align: left; position: relative; left: 2.5%; width: 95%" hidden><label id="replyTxt" style="text-align: left; white-space: nowrap"></label><label style="position: absolute; top: 0px; right: 2.5%;" id="replyClose">×</label></div>
         <button class="button" style="width: 10%; text-align: center;" onclick="document.getElementById('file').click()"><input type="file" id="file" accept="" style="display: none;"><img src="assets/attackment.png" style="height: 50%;"></button>
-        <input class="input" id="message-input" style="width: 85%;" type="text">
+        <textarea class="input" id="message-input" style="width: 85%;" type="text"></textarea>
         <button class="button" id="message-btn" style="width: 20%;" hidden>Send</button>
       </div>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-storage.js"></script>
     <script src='https://www.firebase.com/js/libs/idle.js'></script>
-    <script src="index.js"></script>
+    <script src="code.js"></script>
   </body>
 </html>
