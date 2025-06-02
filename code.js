@@ -94,12 +94,21 @@ let datas = {};
 let onlines = {};
 let contextmenuTarget;
 let reply = "";
+let menuWidth = customMenu.offsetWidth;
+let menuHeight = customMenu.offsetHeight;
+customMenu.style.display = 'none';
 
 // Functions
 function createContextMenu(x, y, exists) {
   if (exists) {
     customMenu.style.left = `${x}px`;
+    if (x + menuWidth > document.documentElement.clientWidth) {
+      customMenu.style.left = `${window.innerWidth - menuWidth}px`;
+    }
     customMenu.style.top = `${y}px`;
+    if (y + menuHeight > window.innerHeight) {
+      customMenu.style.top = `${window.innerHeight - menuHeight}px`;
+    }
     customMenu.style.display = 'block';
     if (datas[contextmenuTarget.id]["name"] == localStorage.getItem('CN-Chat/Username')) {
       customMenuUl.innerHTML = `<li value="1">Reply</li>
@@ -115,7 +124,7 @@ function createContextMenu(x, y, exists) {
 function playSound(url) {
   const audio = new Audio(url);
   audio.play()
-    .then(() => {})
+    .then(() => { })
     .catch(error => console.error("Error playing sound:", error));
 }
 function createMessage(data) {
@@ -134,7 +143,7 @@ function createMessage(data) {
   messageBox.appendChild(nameDiv);
   // Content
   const contentDiv = document.createElement('div');
-  contentDiv.id = data.id+'.msg';
+  contentDiv.id = data.id + '.msg';
   contentDiv.className = 'message-content';
   contentDiv.innerHTML = (data.msg || 'No message content').replace(/\n/g, '<br>');
   messageBox.appendChild(contentDiv);
@@ -149,7 +158,7 @@ function createMessage(data) {
   metaDiv.appendChild(timeSpan);
   // Message status
   const statusSpan = document.createElement('span');
-  statusSpan.id = data.id+'.stat';
+  statusSpan.id = data.id + '.stat';
   statusSpan.className = 'message-status';
   if (data.name == localStorage.getItem('CN-Chat/Username')) {
     statusSpan.textContent = 'Sending...';
@@ -165,12 +174,20 @@ function createMessage(data) {
   }
   let to;
   messageBox.ontouchstart = function (event) {
+    event.preventDefault();
+    customMenu.style.display = 'none';
     to = setTimeout(function () {
       contextmenuTarget = messageBox;
-      createContextMenu(event.pageX, event.pageY, Object.keys(datas).includes(contextmenuTarget.id));
+      console.log(contextmenuTarget.id)
+      createContextMenu(event.changedTouches[0].pageX, event.changedTouches[0].pageY, Object.keys(datas).includes(contextmenuTarget.id));
     }, 250);
   };
-  messageBox.ontouchend = function () {
+  messageBox.ontouchmove = function (event) {
+    event.preventDefault();
+    clearTimeout(to);
+  };
+  messageBox.ontouchend = function (event) {
+    event.preventDefault();
     clearTimeout(to);
   };
   messageBox.oncontextmenu = function (event) {
@@ -231,15 +248,25 @@ function sendMessage() {
   reply = "";
 }
 // Send message
-messageInput.onkeydown = function (event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
+// messageInput.onkeydown = function (event) {
+//   if (event.key === 'Enter' && !event.shiftKey) {
+//     event.preventDefault();
+//     if (messageInput.value.trim() !== '') {
+//       sendMessage();
+//     }
+//   }
+// }
+sendBtn.onclick = function () {
+  if (messageInput.value.trim() !== '') {
     sendMessage();
   }
 }
-
-sendBtn.onclick = function () {
-  sendMessage();
+messageInput.oninput = function () {
+  if (messageInput.value.trim() !== '') {
+    sendBtn.disabled = false;
+  } else {
+    sendBtn.disabled = true;
+  }
 }
 
 // Check online users
@@ -247,6 +274,24 @@ onlineCount.onclick = function () {
   let onlineUsers = Object.keys(onlines).filter(key => onlines[key] === "Online");
   let list = onlineUsers.map((user, idx) => `${idx + 1}. ${user}`).join("\n");
   alert("Online Users:\n" + list);
+}
+
+// Chat Messages scroll behavior
+let showSpecialBtn = true;
+chatMessages.onscroll = function () {
+  if (chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 150) {
+    specialBtn.style.display = 'none';
+    showSpecialBtn = true;
+  } else {
+    if (showSpecialBtn) {
+      specialBtn.style.display = 'block';
+    }
+  }
+}
+specialBtn.onclick = function () {
+  showSpecialBtn = false;
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  specialBtn.style.display = 'none';
 }
 
 // Listen for data changes
@@ -260,34 +305,42 @@ if (localStorage.getItem('CN-Chat/Username')) {
       createMessage(val);
       if (val.stat == "") {
         if (val.name == localStorage.getItem('CN-Chat/Username')) {
-          document.getElementById(val.id+'.stat').textContent = 'Sent';
+          document.getElementById(val.id + '.stat').textContent = 'Sent';
         } else {
-          document.getElementById(val.id+'.stat').textContent = 'Seen';
-          updateData('Messages/' + val.id, {stat: 'Seen'}, function () { });
+          document.getElementById(val.id + '.stat').textContent = 'Seen';
+          updateData('Messages/' + val.id, { stat: 'Seen' }, function () { });
         }
       } else {
-        document.getElementById(val.id+'.stat').textContent = val.stat;
+        document.getElementById(val.id + '.stat').textContent = val.stat;
       }
     }
     starting = false;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    chatMessages.style.scrollBehavior = 'smooth';
   })
   onAdd('Messages', function (data) {
     if (!starting) {
       if (data.name != localStorage.getItem('CN-Chat/Username')) {
         createMessage(data);
         if (data.stat == "") {
-          updateData('Messages/' + data.id, {stat: 'Seen'}, function () { });
+          updateData('Messages/' + data.id, { stat: 'Seen' }, function () { });
         }
         datas[data.id] = data;
         playSound('./assets/notify.wav');
       } else {
-        document.getElementById(data.id+'.stat').textContent = 'Sent';
+        if (Object.keys(datas).includes(String(data.id)) == false) {
+          createMessage(data);
+        }
+        document.getElementById(data.id + '.stat').textContent = 'Sent';
+      }
+      if (chatMessages.scrollTop + chatMessages.clientHeight <= chatMessages.scrollHeight - 150) {
+        specialBtn.style.display = 'block';
       }
     }
   });
   onUpdate('Messages', function (data) {
     datas[data.id] = data;
-    document.getElementById(data.id+'.stat').textContent = data.stat;
+    document.getElementById(data.id + '.stat').textContent = data.stat;
   });
   onDelete('Messages', function (data) {
     delete datas[data.id];
@@ -311,6 +364,7 @@ document.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 document.addEventListener('click', () => {
+  console.log("Click detected, hiding custom menu");
   customMenu.style.display = 'none';
 });
 customMenu.addEventListener('click', (event) => {

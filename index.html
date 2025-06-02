@@ -20,14 +20,17 @@
         <main class="chat-messages" id="chatMessages">
             <!-- Messages will appear here -->
         </main>
+        <!-- Special button, hidden by default -->
+        <button id="specialBtn" class="special-btn" style="display:none;">
+            <img src="assets/down.svg" alt="Down">
+        </button>
         <div class="chat-input-area" id="chatInputArea">
             <label for="fileInput" class="attach-btn" title="Attach file" onclick="alert('Under Development')">
                 <!-- <input type="file" id="fileInput" style="display:none"> -->
                 <img src="assets/attackment.png" alt="Attach">
             </label>
-            <textarea id="messageInput" class="message-input" rows="1" placeholder="Type a message..."
-                required></textarea>
-            <button id="sendBtn" class="send-btn" title="Send">Send</button>
+            <textarea id="messageInput" class="message-input" rows="2" placeholder="Type a message..."></textarea>
+            <button disabled id="sendBtn" class="send-btn" title="Send">Send</button>
         </div>
     </div>
     <!-- Content Menu -->
