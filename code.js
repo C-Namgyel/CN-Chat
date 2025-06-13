@@ -94,6 +94,7 @@ let datas = {};
 let onlines = {};
 let contextmenuTarget;
 let reply = "";
+let edit = "";
 let menuWidth = customMenu.offsetWidth;
 let menuHeight = customMenu.offsetHeight;
 customMenu.style.display = 'none';
@@ -141,6 +142,28 @@ function createMessage(data) {
   nameDiv.className = 'message-name';
   nameDiv.textContent = data.name || 'Unknown';
   messageBox.appendChild(nameDiv);
+  // Reply (if exists)
+  if (data.reply != "" && Object.keys(datas).includes(data.reply)) {
+    const replyDiv = document.createElement('div');
+    replyDiv.onclick = function () {
+      document.getElementById(data.reply)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    replyDiv.className = 'message-reply';
+    replyDiv.id = data.id + '.reply';
+
+    const authorSpan = document.createElement('span');
+    authorSpan.className = 'reply-author';
+    authorSpan.innerHTML = `<strong>Replied to: ${datas[data.reply].name}</strong>`;
+
+    const contentSpan = document.createElement('span');
+    contentSpan.className = 'reply-content';
+    contentSpan.innerHTML = `<br>${(datas[data.reply].msg || '').replace(/\n/g, '<br>')}`;
+
+    replyDiv.appendChild(authorSpan);
+    replyDiv.appendChild(contentSpan);
+
+    messageBox.appendChild(replyDiv);
+  }
   // Content
   const contentDiv = document.createElement('div');
   contentDiv.id = data.id + '.msg';
@@ -156,10 +179,21 @@ function createMessage(data) {
   const now = new Date();
   timeSpan.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   metaDiv.appendChild(timeSpan);
+  // Message Edited
+  const editedSpan = document.createElement('span');
+  editedSpan.id = data.id + '.edited';
+  editedSpan.className = 'message-time';
+  editedSpan.textContent = 'Edited';
+  editedSpan.style.display = 'none';
+  if (data.edit) {
+    editedSpan.style.display = 'block';
+  }
+  metaDiv.appendChild(editedSpan);
+  messageBox.appendChild(metaDiv);
   // Message status
   const statusSpan = document.createElement('span');
   statusSpan.id = data.id + '.stat';
-  statusSpan.className = 'message-status';
+  statusSpan.className = 'message-time';
   if (data.name == localStorage.getItem('CN-Chat/Username')) {
     statusSpan.textContent = 'Sending...';
   } else {
@@ -173,23 +207,6 @@ function createMessage(data) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
   let to;
-  messageBox.ontouchstart = function (event) {
-    event.preventDefault();
-    customMenu.style.display = 'none';
-    to = setTimeout(function () {
-      contextmenuTarget = messageBox;
-      console.log(contextmenuTarget.id)
-      createContextMenu(event.changedTouches[0].pageX, event.changedTouches[0].pageY, Object.keys(datas).includes(contextmenuTarget.id));
-    }, 250);
-  };
-  messageBox.ontouchmove = function (event) {
-    event.preventDefault();
-    clearTimeout(to);
-  };
-  messageBox.ontouchend = function (event) {
-    event.preventDefault();
-    clearTimeout(to);
-  };
   messageBox.oncontextmenu = function (event) {
     event.preventDefault();
     contextmenuTarget = messageBox;
@@ -234,11 +251,10 @@ if (localStorage.getItem('CN-Chat/Username')) {
 function sendMessage() {
   let ts = Date.now();
   let data = {
-    stat: "",
     id: ts,
     msg: messageInput.value,
     name: localStorage.getItem('CN-Chat/Username'),
-    reply: reply || "",
+    reply: reply || null,
   };
   datas[ts] = data;
   createMessage(data);
@@ -246,19 +262,26 @@ function sendMessage() {
   messageInput.value = '';
   messageInput.style.height = 'auto';
   reply = "";
+  messageInput.focus();
 }
 // Send message
-// messageInput.onkeydown = function (event) {
-//   if (event.key === 'Enter' && !event.shiftKey) {
-//     event.preventDefault();
-//     if (messageInput.value.trim() !== '') {
-//       sendMessage();
-//     }
-//   }
-// }
 sendBtn.onclick = function () {
-  if (messageInput.value.trim() !== '') {
+  if (messageInput.value.trim() !== '' && edit == "") {
     sendMessage();
+    cancelExtraBtn.click();
+  } else {
+    if (edit !== "") {
+      let data = {
+        msg: messageInput.value,
+        edit: true
+      };
+      datas[edit] = true;
+      updateData('Messages/' + edit, data, function () { });
+      messageInput.value = '';
+      reply = "";
+      edit = "";
+      cancelExtraBtn.click();
+    }
   }
 }
 messageInput.oninput = function () {
@@ -303,7 +326,7 @@ if (localStorage.getItem('CN-Chat/Username')) {
     bg.style.display = 'none';
     for (let val of Object.values(data)) {
       createMessage(val);
-      if (val.stat == "") {
+      if (val.stat == null) {
         if (val.name == localStorage.getItem('CN-Chat/Username')) {
           document.getElementById(val.id + '.stat').textContent = 'Sent';
         } else {
@@ -322,7 +345,7 @@ if (localStorage.getItem('CN-Chat/Username')) {
     if (!starting) {
       if (data.name != localStorage.getItem('CN-Chat/Username')) {
         createMessage(data);
-        if (data.stat == "") {
+        if (data.stat == null) {
           updateData('Messages/' + data.id, { stat: 'Seen' }, function () { });
         }
         datas[data.id] = data;
@@ -340,11 +363,29 @@ if (localStorage.getItem('CN-Chat/Username')) {
   });
   onUpdate('Messages', function (data) {
     datas[data.id] = data;
-    document.getElementById(data.id + '.stat').textContent = data.stat;
+    if (data.stat == null) {
+      document.getElementById(data.id + '.stat').textContent = 'Sent';
+    } else {
+      document.getElementById(data.id + '.stat').textContent = data.stat;
+    }
+    if (data.edit) {
+      document.getElementById(data.id + '.edited').style.display = 'block';
+    }
+    document.getElementById(data.id + '.msg').innerHTML = data.msg.replace('\n', '<br>');
   });
   onDelete('Messages', function (data) {
+    const repliedMessages = Object.values(datas).filter(msg => msg.reply === data.id.toString());
+    // Delete the replied div
+    repliedMessages.forEach(msg => {
+      // document.getElementById(msg.id + '.reply').remove();
+      document.getElementById(msg.id + '.reply').textContent = `This message has been unsent.`;
+    });
     delete datas[data.id];
     document.getElementById(data.id).innerHTML = `<div class="message-content">This message has been unsent.</div>`;
+    if (contextmenuTarget.id == data.id) {
+      customMenu.style.display = 'none';
+      cancelExtraBtn.click();
+    }
   });
   onDisconnected('Users/' + localStorage.getItem('CN-Chat/Username'), "Offline");
   onChange('Users', function (data) {
@@ -364,7 +405,6 @@ document.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 document.addEventListener('click', () => {
-  console.log("Click detected, hiding custom menu");
   customMenu.style.display = 'none';
 });
 customMenu.addEventListener('click', (event) => {
@@ -372,7 +412,11 @@ customMenu.addEventListener('click', (event) => {
     customMenu.style.display = 'none';
     switch (event.target.value) {
       case 1:
-        alert("Under development");
+        reply = contextmenuTarget.id;
+        edit = "";
+        extraArea.style.display = 'block';
+        extraText.innerHTML = `Replying to ${datas[contextmenuTarget.id]["name"]}:<br>${datas[contextmenuTarget.id]["msg"].replaceAll("\n", "<br>")}`;
+        messageInput.focus();
         break;
       case 2:
         navigator.clipboard.writeText(datas[contextmenuTarget.id]["msg"])
@@ -382,11 +426,52 @@ customMenu.addEventListener('click', (event) => {
           });
         break;
       case 3:
-        deleteData('Messages/' + contextmenuTarget.id, function () { });
+        bg.innerHTML = '';
+        let container = document.createElement('div');
+        container.id = 'name-container';
+        let label = document.createElement('label');
+        label.textContent = 'Are you sure you want to unsend the message?';
+        let cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.id = 'cancel-btn';
+        let okBtn = document.createElement('button');
+        okBtn.textContent = 'OK';
+        okBtn.id = 'ok-btn';
+        container.appendChild(label);
+        container.appendChild(okBtn);
+        container.appendChild(cancelBtn);
+        bg.appendChild(container);
+        okBtn.onclick = function () {
+          deleteData('Messages/' + contextmenuTarget.id, function () { });
+          bg.innerHTML = '';
+          bg.style.display = 'none';
+        }
+        cancelBtn.onclick = function () {
+          bg.innerHTML = '';
+          bg.style.display = 'none';
+        }
+        bg.style.display = 'block';
         break;
       case 4:
-        alert("Under development");
+        edit = contextmenuTarget.id;
+        reply = "";
+        messageInput.value = datas[contextmenuTarget.id]["msg"];
+        extraArea.style.display = 'block';
+        extraText.innerHTML = `Editing: ${datas[contextmenuTarget.id]["msg"].replaceAll("\n", "<br>")}`;
+        messageInput.focus();
         break;
     }
   }
 });
+
+// Extra area
+cancelExtraBtn.onclick = function () {
+  extraArea.style.display = 'none';
+  reply = "";
+  if (edit !== "") {
+    messageInput.value = "";
+  }
+  edit = "";
+  extraText.innerHTML = '';
+  messageInput.focus();
+}

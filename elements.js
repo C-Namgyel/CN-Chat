@@ -8,3 +8,6 @@ const bg = document.getElementById('bg');
 const customMenu = document.getElementById('customMenu');
 const customMenuUl = document.getElementById('customMenuUl');
 const specialBtn = document.getElementById('specialBtn');
+const extraArea = document.getElementById('extraArea');
+const extraText = document.getElementById('extraText');
+const cancelExtraBtn = document.getElementById('cancelExtraBtn');
