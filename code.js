@@ -176,7 +176,7 @@ function createMessage(data) {
   const timeSpan = document.createElement('span');
   timeSpan.className = 'message-time';
   // Show current time for now (could be improved with server timestamp)
-  const now = new Date();
+  const now = new Date(Number(data.id));
   timeSpan.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   metaDiv.appendChild(timeSpan);
   // Message Edited
@@ -291,6 +291,12 @@ messageInput.oninput = function () {
     sendBtn.disabled = true;
   }
 }
+/*messageInput.addEventListener('keydown', function (event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendBtn.click();
+  }
+});*/
 
 // Check online users
 onlineCount.onclick = function () {
@@ -410,6 +416,7 @@ document.addEventListener('click', () => {
 customMenu.addEventListener('click', (event) => {
   if (event.target.tagName === 'LI') {
     customMenu.style.display = 'none';
+    let scrollAmount = 0;
     switch (event.target.value) {
       case 1:
         reply = contextmenuTarget.id;
@@ -417,6 +424,8 @@ customMenu.addEventListener('click', (event) => {
         extraArea.style.display = 'block';
         extraText.innerHTML = `Replying to ${datas[contextmenuTarget.id]["name"]}:<br>${datas[contextmenuTarget.id]["msg"].replaceAll("\n", "<br>")}`;
         messageInput.focus();
+        scrollAmount = extraArea.offsetHeight;
+        chatMessages.scrollTop = Math.max(0, chatMessages.scrollTop + scrollAmount);
         break;
       case 2:
         navigator.clipboard.writeText(datas[contextmenuTarget.id]["msg"])
@@ -459,6 +468,8 @@ customMenu.addEventListener('click', (event) => {
         extraArea.style.display = 'block';
         extraText.innerHTML = `Editing: ${datas[contextmenuTarget.id]["msg"].replaceAll("\n", "<br>")}`;
         messageInput.focus();
+        scrollAmount = extraArea.offsetHeight;
+        chatMessages.scrollTop = Math.max(0, chatMessages.scrollTop + scrollAmount);
         break;
     }
   }
