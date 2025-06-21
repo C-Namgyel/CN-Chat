@@ -90,7 +90,6 @@ function getLimitedData(path, limit, callback) {
         }
         return data;
       } else {
-        console.log("No data available");
         return {};
       }
     })
@@ -122,12 +121,12 @@ let limit = 50;
 let fullData = false;
 let firstVisibleMsg = null;
 let foreground = true;
+let bgData = [];
 
 customMenu.style.display = 'none';
 
 // Functions
 function createContextMenu(x, y, exists) {
-  console.log(exists)
   if (exists) {
     customMenu.style.left = `${x}px`;
     if (x + menuWidth > document.documentElement.clientWidth) {
@@ -237,8 +236,6 @@ function createMessage(data) {
   messageBox.oncontextmenu = function (event) {
     event.preventDefault();
     contextmenuTarget = messageBox;
-    console.log("Context menu opened for message:", messageBox);
-    console.log(datas);
     createContextMenu(event.pageX, event.pageY, Object.keys(datas).includes(contextmenuTarget.id));
   }
 }
@@ -263,6 +260,13 @@ function checkState() {
     foreground = false;
   } else if (document.hasFocus()) {
     foreground = true;
+    for (let id of bgData) {
+      if (Object.keys(datas).includes(id.toString())) {
+        updateData('Messages/' + id, { stat:'Seen'}, function () {
+          bgData.splice(bgData.indexOf(id), 1);
+        });
+      }
+    }
   } else {
     foreground = false;
   }
@@ -403,11 +407,15 @@ if (localStorage.getItem('CN-Chat/Username')) {
   onAdd('Messages', function (data) {
     if (!starting) {
       if (data.name != localStorage.getItem('CN-Chat/Username')) {
+        datas[data.id] = data;
         createMessage(data);
         if (data.stat == null) {
-          updateData('Messages/' + data.id, { stat: 'Seen' }, function () { });
+          if (foreground == true) {
+            updateData('Messages/' + data.id, { stat: 'Seen' }, function () { });
+          } else {
+            bgData.push(data.id);
+          }
         }
-        datas[data.id] = data;
         playSound('./assets/notify.wav');
       } else {
         if (Object.keys(datas).includes(String(data.id)) == false) {
