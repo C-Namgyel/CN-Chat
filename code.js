@@ -1,7 +1,7 @@
 // Firebase configuration and initialization
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
-import { getDatabase, ref, set, child, get, update, onChildAdded, onChildChanged, onChildRemoved, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { getDatabase, ref, set, child, get, update, onChildAdded, onChildChanged, onChildRemoved, onDisconnect, onValue, query, orderByKey, limitToLast } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDkAhgKQNe7OaVT5P0wFg7h98rZT8v22Q0",
   authDomain: "cn-chat-7ac19.firebaseapp.com",
@@ -78,6 +78,26 @@ function onChange(path, callback) {
 function onDisconnected(path, message) {
   onDisconnect(ref(database, path)).set(message);
 }
+function getLimitedData(path, limit, callback) {
+  const dataQuery = query(ref(database, path), orderByKey(), limitToLast(limit));
+
+  return get(dataQuery)
+    .then(snapshot => {
+      if (snapshot.exists()) {
+        const data = Object.entries(snapshot.val()).map(([key, value]) => ({ key, ...value }));
+        if (callback && typeof callback === "function") {
+          callback(data);
+        }
+        return data;
+      } else {
+        return [];
+      }
+    })
+    .catch(error => {
+      console.error("Error fetching recent messages:", error);
+      return [];
+    });
+}
 
 // Responsive design for the chat container
 if (messageInput) {
@@ -97,6 +117,10 @@ let reply = "";
 let edit = "";
 let menuWidth = customMenu.offsetWidth;
 let menuHeight = customMenu.offsetHeight;
+let limit = 50;
+let fullData = false;
+let firstVisibleMsg = null;
+
 customMenu.style.display = 'none';
 
 // Functions
@@ -291,12 +315,6 @@ messageInput.oninput = function () {
     sendBtn.disabled = true;
   }
 }
-/*messageInput.addEventListener('keydown', function (event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    sendBtn.click();
-  }
-});*/
 
 // Check online users
 onlineCount.onclick = function () {
@@ -316,6 +334,52 @@ chatMessages.onscroll = function () {
       specialBtn.style.display = 'block';
     }
   }
+  if (chatMessages.scrollTop == 0) {
+    if (fullData) {
+      return;
+    }
+    limit += 50;
+    // Get the id of the topmost visible message before loading more
+
+    getLimitedData('Messages', limit, function (data) {
+      datas = data;
+      if (Object.keys(datas).length < limit) {
+        fullData = true;
+      }
+      bg.innerHTML = '';
+      bg.style.display = 'none';
+      chatMessages.innerHTML = ''; // Clear current messages
+      if (!fullData) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-messages';
+        loadingDiv.textContent = 'Loading more messages';
+        chatMessages.appendChild(loadingDiv);
+      }
+      for (let val of Object.values(data)) {
+        createMessage(val);
+        if (val.stat == null) {
+          if (val.name == localStorage.getItem('CN-Chat/Username')) {
+            document.getElementById(val.id + '.stat').textContent = 'Sent';
+          } else {
+            document.getElementById(val.id + '.stat').textContent = 'Seen';
+            updateData('Messages/' + val.id, { stat: 'Seen' }, function () { });
+          }
+        } else {
+          document.getElementById(val.id + '.stat').textContent = val.stat;
+        }
+      }
+      if (firstVisibleMsg && document.getElementById(firstVisibleMsg)) {
+        chatMessages.style.scrollBehavior = 'auto';
+        document.getElementById(firstVisibleMsg).scrollIntoView({ block: 'start' });
+        setTimeout(() => {
+          chatMessages.style.scrollBehavior = 'smooth';
+        }, 0);
+      } else {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      firstVisibleMsg = Object.values(data)[0].id;
+    });
+  };
 }
 specialBtn.onclick = function () {
   showSpecialBtn = false;
@@ -326,10 +390,21 @@ specialBtn.onclick = function () {
 // Listen for data changes
 if (localStorage.getItem('CN-Chat/Username')) {
   uploadData('Users/' + localStorage.getItem('CN-Chat/Username'), "Online", function () { });
-  getData('Messages', function (data) {
+  getLimitedData('Messages', 50, function (data) {
     datas = data;
+    console.log("Loaded messages:", datas);
+    if (Object.keys(datas).length < limit) {
+      fullData = true;
+    }
     bg.innerHTML = '';
     bg.style.display = 'none';
+    chatMessages.innerHTML = '';
+    if (!fullData) {
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading-messages';
+      loadingDiv.textContent = 'Loading more messages';
+      chatMessages.appendChild(loadingDiv);
+    }
     for (let val of Object.values(data)) {
       createMessage(val);
       if (val.stat == null) {
@@ -343,6 +418,7 @@ if (localStorage.getItem('CN-Chat/Username')) {
         document.getElementById(val.id + '.stat').textContent = val.stat;
       }
     }
+    firstVisibleMsg = Object.values(data)[0].id; // Get the first message id
     starting = false;
     chatMessages.scrollTop = chatMessages.scrollHeight;
     chatMessages.style.scrollBehavior = 'smooth';
@@ -486,3 +562,10 @@ cancelExtraBtn.onclick = function () {
   extraText.innerHTML = '';
   messageInput.focus();
 }
+
+// messageInput.addEventListener('keydown', function (event) {
+//   if (event.key === 'Enter' && !event.shiftKey) {
+//     event.preventDefault();
+//     sendBtn.click();
+//   }
+// });
