@@ -84,18 +84,19 @@ function getLimitedData(path, limit, callback) {
   return get(dataQuery)
     .then(snapshot => {
       if (snapshot.exists()) {
-        const data = Object.entries(snapshot.val()).map(([key, value]) => ({ key, ...value }));
+        const data = snapshot.val();
         if (callback && typeof callback === "function") {
           callback(data);
         }
         return data;
       } else {
-        return [];
+        console.log("No data available");
+        return {};
       }
     })
     .catch(error => {
       console.error("Error fetching recent messages:", error);
-      return [];
+      return {};
     });
 }
 
@@ -120,11 +121,13 @@ let menuHeight = customMenu.offsetHeight;
 let limit = 50;
 let fullData = false;
 let firstVisibleMsg = null;
+let foreground = true;
 
 customMenu.style.display = 'none';
 
 // Functions
 function createContextMenu(x, y, exists) {
+  console.log(exists)
   if (exists) {
     customMenu.style.left = `${x}px`;
     if (x + menuWidth > document.documentElement.clientWidth) {
@@ -234,42 +237,9 @@ function createMessage(data) {
   messageBox.oncontextmenu = function (event) {
     event.preventDefault();
     contextmenuTarget = messageBox;
+    console.log("Context menu opened for message:", messageBox);
+    console.log(datas);
     createContextMenu(event.pageX, event.pageY, Object.keys(datas).includes(contextmenuTarget.id));
-  }
-}
-
-// Initialize
-if (localStorage.getItem('CN-Chat/Username')) {
-  username = localStorage.getItem('CN-Chat/Username');
-} else {
-  let container = document.createElement('div');
-  container.id = 'name-container';
-  let label = document.createElement('label');
-  label.textContent = 'Enter your name:';
-  label.htmlFor = 'name-input';
-  let input = document.createElement('input');
-  input.type = 'text';
-  input.id = 'name-input';
-  let okBtn = document.createElement('button');
-  okBtn.textContent = 'OK';
-  okBtn.id = 'ok-btn';
-  container.appendChild(label);
-  container.appendChild(input);
-  container.appendChild(okBtn);
-  bg.appendChild(container);
-  okBtn.onclick = function () {
-    username = input.value.trim();
-    if (username === '') {
-      label.textContent = "Please enter a valid name:";
-      return;
-    } else if (username.length > 20) {
-      label.textContent = "Name too long! Max 20 characters.";
-      return;
-    } else {
-      localStorage.setItem('CN-Chat/Username', username);
-      bg.innerHTML = '';
-      location.reload();
-    }
   }
 }
 function sendMessage() {
@@ -288,6 +258,16 @@ function sendMessage() {
   reply = "";
   messageInput.focus();
 }
+function checkState() {
+  if (document.hidden) {
+    foreground = false;
+  } else if (document.hasFocus()) {
+    foreground = true;
+  } else {
+    foreground = false;
+  }
+}
+
 // Send message
 sendBtn.onclick = function () {
   if (messageInput.value.trim() !== '' && edit == "") {
@@ -339,8 +319,6 @@ chatMessages.onscroll = function () {
       return;
     }
     limit += 50;
-    // Get the id of the topmost visible message before loading more
-
     getLimitedData('Messages', limit, function (data) {
       datas = data;
       if (Object.keys(datas).length < limit) {
@@ -348,7 +326,7 @@ chatMessages.onscroll = function () {
       }
       bg.innerHTML = '';
       bg.style.display = 'none';
-      chatMessages.innerHTML = ''; // Clear current messages
+      chatMessages.innerHTML = '';
       if (!fullData) {
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'loading-messages';
@@ -389,16 +367,15 @@ specialBtn.onclick = function () {
 
 // Listen for data changes
 if (localStorage.getItem('CN-Chat/Username')) {
+  username = localStorage.getItem('CN-Chat/Username');
   uploadData('Users/' + localStorage.getItem('CN-Chat/Username'), "Online", function () { });
   getLimitedData('Messages', 50, function (data) {
     datas = data;
-    console.log("Loaded messages:", datas);
     if (Object.keys(datas).length < limit) {
       fullData = true;
     }
     bg.innerHTML = '';
     bg.style.display = 'none';
-    chatMessages.innerHTML = '';
     if (!fullData) {
       const loadingDiv = document.createElement('div');
       loadingDiv.className = 'loading-messages';
@@ -418,7 +395,7 @@ if (localStorage.getItem('CN-Chat/Username')) {
         document.getElementById(val.id + '.stat').textContent = val.stat;
       }
     }
-    firstVisibleMsg = Object.values(data)[0].id; // Get the first message id
+    firstVisibleMsg = Object.values(data)[0].id;
     starting = false;
     chatMessages.scrollTop = chatMessages.scrollHeight;
     chatMessages.style.scrollBehavior = 'smooth';
@@ -457,9 +434,7 @@ if (localStorage.getItem('CN-Chat/Username')) {
   });
   onDelete('Messages', function (data) {
     const repliedMessages = Object.values(datas).filter(msg => msg.reply === data.id.toString());
-    // Delete the replied div
     repliedMessages.forEach(msg => {
-      // document.getElementById(msg.id + '.reply').remove();
       document.getElementById(msg.id + '.reply').textContent = `This message has been unsent.`;
     });
     delete datas[data.id];
@@ -480,6 +455,36 @@ if (localStorage.getItem('CN-Chat/Username')) {
     }
     onlineCount.textContent = `Online Users: ${num}`;
   });
+} else {
+  let container = document.createElement('div');
+  container.id = 'name-container';
+  let label = document.createElement('label');
+  label.textContent = 'Enter your name:';
+  label.htmlFor = 'name-input';
+  let input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'name-input';
+  let okBtn = document.createElement('button');
+  okBtn.textContent = 'OK';
+  okBtn.id = 'ok-btn';
+  container.appendChild(label);
+  container.appendChild(input);
+  container.appendChild(okBtn);
+  bg.appendChild(container);
+  okBtn.onclick = function () {
+    username = input.value.trim();
+    if (username === '') {
+      label.textContent = "Please enter a valid name:";
+      return;
+    } else if (username.length > 20) {
+      label.textContent = "Name too long! Max 20 characters.";
+      return;
+    } else {
+      localStorage.setItem('CN-Chat/Username', username);
+      bg.innerHTML = '';
+      location.reload();
+    }
+  }
 }
 
 // Contextmenu
@@ -562,6 +567,11 @@ cancelExtraBtn.onclick = function () {
   extraText.innerHTML = '';
   messageInput.focus();
 }
+
+// Track focus changes
+document.addEventListener("visibilitychange", checkState);
+window.addEventListener("focus", checkState);
+window.addEventListener("blur", checkState);
 
 // messageInput.addEventListener('keydown', function (event) {
 //   if (event.key === 'Enter' && !event.shiftKey) {
