@@ -2,6 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
 import { getDatabase, ref, set, child, get, update, onChildAdded, onChildChanged, onChildRemoved, onDisconnect, onValue, query, orderByKey, limitToLast } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { getStorage, ref as stRef, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-storage.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDkAhgKQNe7OaVT5P0wFg7h98rZT8v22Q0",
   authDomain: "cn-chat-7ac19.firebaseapp.com",
@@ -17,8 +18,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const database = getDatabase(app);
+const storage = getStorage(app);
 
-// Functions for Firebase
+// Functions for Firebase Realtime Database
 function uploadData(path, data, callback) {
   set(ref(database, path), data)
     .then(() => {
@@ -98,6 +100,41 @@ function getLimitedData(path, limit, callback) {
       return {};
     });
 }
+// Functions for Firebase Storage
+function uploadFile(path, file, onProgress, onComplete, onError) {
+  const storageRef = stRef(storage, path);
+  const uploadTask = uploadBytesResumable(storageRef, file);
+
+  uploadTask.on('state_changed',
+    (snapshot) => {
+      // Track progress
+      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      onProgress(progress);
+    },
+    (error) => {
+      // Handle errors
+      if (onError) onError(error);
+    },
+    () => {
+      // Upload complete
+      getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+        onComplete(downloadURL);
+      });
+    }
+  );
+}
+function deleteFile(filePath, onSuccess, onError) {
+  const fileRef = stRef(storage, filePath);
+
+  deleteObject(fileRef)
+    .then(() => {
+      onSuccess();
+    })
+    .catch((error) => {
+      if (onError) onError(error);
+    });
+}
+
 
 // Responsive design for the chat container
 if (messageInput) {
@@ -262,7 +299,7 @@ function checkState() {
     foreground = true;
     for (let id of bgData) {
       if (Object.keys(datas).includes(id.toString())) {
-        updateData('Messages/' + id, { stat:'Seen'}, function () {
+        updateData('Messages/' + id, { stat: 'Seen' }, function () {
           bgData.splice(bgData.indexOf(id), 1);
         });
       }
@@ -540,7 +577,14 @@ customMenu.addEventListener('click', (event) => {
         container.appendChild(cancelBtn);
         bg.appendChild(container);
         okBtn.onclick = function () {
-          deleteData('Messages/' + contextmenuTarget.id, function () { });
+          let toDeleteData = datas[contextmenuTarget.id];
+          deleteData('Messages/' + toDeleteData.id, function () {
+            if (toDeleteData.type == "img") {
+              deleteFile(toDeleteData.id + "/", function () {}, function (error) {
+                console.error("Error deleting file:", error);
+              });
+            }
+          });
           bg.innerHTML = '';
           bg.style.display = 'none';
         }
@@ -564,6 +608,52 @@ customMenu.addEventListener('click', (event) => {
   }
 });
 
+// File upload
+fileInput.oninput = (files) => {
+  if (files.target.files.length > 0) {
+    const file = files.target.files[0];
+    const ts = Date.now();
+    if (file.size > 25 * 1024 * 1024) { // 10 MB limit
+      alert("File size exceeds 10 MB limit.");
+      return;
+    }
+    // Create a simple upload progress message box
+    const progressDiv = document.createElement('div');
+    progressDiv.id = ts + '.upload';
+    progressDiv.className = 'message-box-self';
+    progressDiv.textContent = `Uploading image: 0%`;
+    chatMessages.appendChild(progressDiv);
+    if (chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 150) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    uploadFile(ts + "/", file,
+      (progress) => {
+        document.getElementById(ts + ".upload").innerHTML = `Uploading image: ${Math.round(progress)}%`;
+      },
+      (downloadURL) => {
+        document.getElementById(ts + ".upload").remove();
+        let data = {
+          id: ts,
+          msg: `Sent a photo<br><a href="${downloadURL}" target="_blank">${file.name}</a>`,
+          name: localStorage.getItem('CN-Chat/Username'),
+          reply: reply || null,
+          type: "img"
+        };
+        datas[ts] = data;
+        createMessage(data);
+        uploadData('Messages/' + ts, data, function () { });
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        reply = "";
+        messageInput.focus();
+      },
+      (error) => {
+        console.error("Error uploading file:", error);
+      }
+    );
+  }
+}
+
 // Extra area
 cancelExtraBtn.onclick = function () {
   extraArea.style.display = 'none';
@@ -581,9 +671,9 @@ document.addEventListener("visibilitychange", checkState);
 window.addEventListener("focus", checkState);
 window.addEventListener("blur", checkState);
 
-// messageInput.addEventListener('keydown', function (event) {
-//   if (event.key === 'Enter' && !event.shiftKey) {
-//     event.preventDefault();
-//     sendBtn.click();
-//   }
-// });
+messageInput.addEventListener('keydown', function (event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendBtn.click();
+  }
+});
