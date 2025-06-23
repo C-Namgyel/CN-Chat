@@ -240,10 +240,7 @@ function createMessage(data) {
   const contentDiv = document.createElement('div');
   contentDiv.id = data.id + '.msg';
   contentDiv.className = 'message-content';
-  console.log(data.type);
-  console.log(data.type == "img");
   if (data.type == "img") {
-    console.log("Image message detected");
     // Show a temporary placeholder while the image loads
     const placeholder = document.createElement('div');
     placeholder.className = 'img-placeholder';
@@ -270,7 +267,6 @@ function createMessage(data) {
       : '0 auto 0 0';
 
     img.onload = function () {
-      console.log("Image loaded successfully");
       placeholder.remove();
       contentDiv.appendChild(img);
     };
@@ -559,7 +555,6 @@ if (localStorage.getItem('CN-Chat/Username')) {
   onDisconnected('Users/' + localStorage.getItem('CN-Chat/Username'), "Offline");
   onChange('Users/', function (data) {
     onlines = data;
-    console.log("Online users:", onlines);
     let num = 0;
     for (let key of Object.keys(onlines)) {
       if (onlines[key] === "Online") {
@@ -680,50 +675,64 @@ customMenu.addEventListener('click', (event) => {
 });
 
 // File upload
+function fileUploadFunction(file) {
+  const ts = Date.now();
+  if (file.size > 25 * 1024 * 1024) { // 10 MB limit
+    alert("File size exceeds 10 MB limit.");
+    return;
+  }
+  // Create a simple upload progress message box
+  const progressDiv = document.createElement('div');
+  progressDiv.id = ts + '.upload';
+  progressDiv.className = 'message-box-self';
+  progressDiv.textContent = `Uploading image: 0%`;
+  chatMessages.appendChild(progressDiv);
+  if (chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 150) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  uploadFile(ts + "/", file,
+    (progress) => {
+      document.getElementById(ts + ".upload").innerHTML = `Uploading image: ${Math.round(progress)}%`;
+    },
+    (downloadURL) => {
+      document.getElementById(ts + ".upload").remove();
+      let data = {
+        id: ts,
+        msg: downloadURL,
+        name: localStorage.getItem('CN-Chat/Username'),
+        reply: reply || null,
+        type: "img"
+      };
+      datas[ts] = data;
+      createMessage(data);
+      uploadData('Messages/' + ts, data, function () { });
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      reply = "";
+      messageInput.focus();
+    },
+    (error) => {
+      console.error("Error uploading file:", error);
+    }
+  );
+}
 fileInput.oninput = (files) => {
   if (files.target.files.length > 0) {
     const file = files.target.files[0];
-    const ts = Date.now();
-    if (file.size > 25 * 1024 * 1024) { // 10 MB limit
-      alert("File size exceeds 10 MB limit.");
-      return;
-    }
-    // Create a simple upload progress message box
-    const progressDiv = document.createElement('div');
-    progressDiv.id = ts + '.upload';
-    progressDiv.className = 'message-box-self';
-    progressDiv.textContent = `Uploading image: 0%`;
-    chatMessages.appendChild(progressDiv);
-    if (chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 150) {
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    uploadFile(ts + "/", file,
-      (progress) => {
-        document.getElementById(ts + ".upload").innerHTML = `Uploading image: ${Math.round(progress)}%`;
-      },
-      (downloadURL) => {
-        document.getElementById(ts + ".upload").remove();
-        let data = {
-          id: ts,
-          msg: downloadURL,
-          name: localStorage.getItem('CN-Chat/Username'),
-          reply: reply || null,
-          type: "img"
-        };
-        datas[ts] = data;
-        createMessage(data);
-        uploadData('Messages/' + ts, data, function () { });
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        reply = "";
-        messageInput.focus();
-      },
-      (error) => {
-        console.error("Error uploading file:", error);
-      }
-    );
+    fileUploadFunction(file);
   }
 }
+messageInput.addEventListener('paste', function (event) {
+  const items = event.clipboardData.items;
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const fileData = items[i].getAsFile();
+      fileUploadFunction(fileData);
+      event.preventDefault();
+      break;
+    }
+  }
+});
 
 // Extra area
 cancelExtraBtn.onclick = function () {
@@ -756,9 +765,9 @@ function updateConnectionStatus(isOnline) {
 window.addEventListener('online', () => updateConnectionStatus(true));
 window.addEventListener('offline', () => updateConnectionStatus(false));
 
-messageInput.addEventListener('keydown', function (event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    sendBtn.click();
-  }
-});
+// messageInput.addEventListener('keydown', function (event) {
+//   if (event.key === 'Enter' && !event.shiftKey) {
+//     event.preventDefault();
+//     sendBtn.click();
+//   }
+// });
