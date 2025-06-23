@@ -175,10 +175,15 @@ function createContextMenu(x, y, exists) {
     }
     customMenu.style.display = 'block';
     if (datas[contextmenuTarget.id]["name"] == localStorage.getItem('CN-Chat/Username')) {
-      customMenuUl.innerHTML = `<li value="1">Reply</li>
+      if (datas[contextmenuTarget.id]["type"] == "img") {
+        customMenuUl.innerHTML = `<li value="1">Reply</li>
+            <li value="3">Unsend</li>`;
+      } else {
+        customMenuUl.innerHTML = `<li value="1">Reply</li>
             <li value="2">Copy</li>
             <li value="3">Unsend</li>
             <li value="4">Edit</li>`;
+      }
     } else {
       customMenuUl.innerHTML = `<li value="1">Reply</li>
             <li value="2">Copy</li>`;
@@ -231,7 +236,54 @@ function createMessage(data) {
   const contentDiv = document.createElement('div');
   contentDiv.id = data.id + '.msg';
   contentDiv.className = 'message-content';
-  contentDiv.innerHTML = (data.msg || 'No message content').replace(/\n/g, '<br>');
+  if (data.type === "img") {
+    // Show a temporary placeholder while the image loads
+    const placeholder = document.createElement('div');
+    placeholder.className = 'img-placeholder';
+    placeholder.style.width = '200px';
+    placeholder.style.height = '200px';
+    placeholder.style.aspectRatio = '1/1';
+    placeholder.style.background = 'url("./assets/loading.webp") center center no-repeat';
+    placeholder.style.backgroundSize = '25%';
+    placeholder.style.display = 'block';
+    placeholder.style.borderRadius = '8px';
+    placeholder.style.margin = data.name == localStorage.getItem('CN-Chat/Username')
+      ? '0 0 0 auto'
+      : '0 auto 0 0';
+    contentDiv.appendChild(placeholder);
+
+    const img = document.createElement('img');
+    img.src = data.msg;
+    img.alt = 'Image';
+    img.style.maxWidth = '50%';
+    img.style.cursor = 'pointer';
+    img.style.display = 'block';
+    img.style.margin = data.name == localStorage.getItem('CN-Chat/Username')
+      ? '0 0 0 auto'
+      : '0 auto 0 0';
+
+    img.onload = function () {
+      placeholder.replaceWith(img);
+    };
+    img.onerror = function () {
+      placeholder.textContent = "Failed to load image.";
+      placeholder.style.background = "#eee";
+    };
+    img.onclick = function () {
+      window.open(data.msg, '_blank');
+    };
+  } else {
+    const urlRegex = /((https?:\/\/|www\.)[^\s<]+)/gi;
+    let msgHtml = (data.msg || '').replace(/\n/g, '<br>');
+    msgHtml = msgHtml.replace(urlRegex, function(url) {
+      let href = url;
+      if (!/^https?:\/\//i.test(url)) {
+        href = 'http://' + url;
+      }
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+    contentDiv.innerHTML = msgHtml;
+  }
   messageBox.appendChild(contentDiv);
   // Meta (time)
   const metaDiv = document.createElement('div');
@@ -451,6 +503,7 @@ if (localStorage.getItem('CN-Chat/Username')) {
             updateData('Messages/' + data.id, { stat: 'Seen' }, function () { });
           } else {
             bgData.push(data.id);
+            updateData('Messages/' + data.id, { stat: 'Delivered' }, function () { });
           }
         }
         playSound('./assets/notify.wav');
@@ -490,8 +543,9 @@ if (localStorage.getItem('CN-Chat/Username')) {
     }
   });
   onDisconnected('Users/' + localStorage.getItem('CN-Chat/Username'), "Offline");
-  onChange('Users', function (data) {
+  onChange('Users/', function (data) {
     onlines = data;
+    console.log("Online users:", onlines);
     let num = 0;
     for (let key of Object.keys(onlines)) {
       if (onlines[key] === "Online") {
@@ -499,6 +553,9 @@ if (localStorage.getItem('CN-Chat/Username')) {
       }
     }
     onlineCount.textContent = `Online Users: ${num}`;
+    if (onlines[localStorage.getItem('CN-Chat/Username')] == "Offline") {
+      uploadData('Users/' + localStorage.getItem('CN-Chat/Username'), "Online", function () { });
+    }
   });
 } else {
   let container = document.createElement('div');
@@ -634,7 +691,7 @@ fileInput.oninput = (files) => {
         document.getElementById(ts + ".upload").remove();
         let data = {
           id: ts,
-          msg: `Sent a photo<br><a href="${downloadURL}" target="_blank">${file.name}</a>`,
+          msg: downloadURL,
           name: localStorage.getItem('CN-Chat/Username'),
           reply: reply || null,
           type: "img"
@@ -670,6 +727,20 @@ cancelExtraBtn.onclick = function () {
 document.addEventListener("visibilitychange", checkState);
 window.addEventListener("focus", checkState);
 window.addEventListener("blur", checkState);
+
+// Check for internt connectivity
+function updateConnectionStatus(isOnline) {
+  if (isOnline == true) {
+    bg.style.display = 'none';
+    bg.innerHTML = '';
+  } else {
+    bg.style.display = 'block';
+    bg.innerHTML = '<div class="offline-message">You are offline. Please check your internet connection.</div>';
+  }
+}
+
+window.addEventListener('online', () => updateConnectionStatus(true));
+window.addEventListener('offline', () => updateConnectionStatus(false));
 
 messageInput.addEventListener('keydown', function (event) {
   if (event.key === 'Enter' && !event.shiftKey) {

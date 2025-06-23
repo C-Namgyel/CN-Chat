@@ -515,3 +515,20 @@ body {
 .extra-cancel-btn:hover {
     color: #e53935;
 }
+
+.offline-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffe0e0;
+    color: #b71c1c;
+    font-size: 1em;
+    font-weight: 500;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin: 12px;
+    border: 1px solid #ffcdd2;
+    box-shadow: 0 1px 4px rgba(183, 28, 28, 0.08);
+    text-align: center;
+    gap: 8px;
+}
