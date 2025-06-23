@@ -185,8 +185,12 @@ function createContextMenu(x, y, exists) {
             <li value="4">Edit</li>`;
       }
     } else {
-      customMenuUl.innerHTML = `<li value="1">Reply</li>
-            <li value="2">Copy</li>`;
+      if (datas[contextmenuTarget.id]["type"] == "img") {
+        customMenuUl.innerHTML = `<li value="1">Reply</li>`;
+      } else {
+        customMenuUl.innerHTML = `<li value="1">Reply</li>
+              <li value="2">Copy</li>`;
+      }
     }
   }
 }
@@ -236,7 +240,10 @@ function createMessage(data) {
   const contentDiv = document.createElement('div');
   contentDiv.id = data.id + '.msg';
   contentDiv.className = 'message-content';
-  if (data.type === "img") {
+  console.log(data.type);
+  console.log(data.type == "img");
+  if (data.type == "img") {
+    console.log("Image message detected");
     // Show a temporary placeholder while the image loads
     const placeholder = document.createElement('div');
     placeholder.className = 'img-placeholder';
@@ -263,7 +270,9 @@ function createMessage(data) {
       : '0 auto 0 0';
 
     img.onload = function () {
-      placeholder.replaceWith(img);
+      console.log("Image loaded successfully");
+      placeholder.remove();
+      contentDiv.appendChild(img);
     };
     img.onerror = function () {
       placeholder.textContent = "Failed to load image.";
@@ -273,16 +282,7 @@ function createMessage(data) {
       window.open(data.msg, '_blank');
     };
   } else {
-    const urlRegex = /((https?:\/\/|www\.)[^\s<]+)/gi;
-    let msgHtml = (data.msg || '').replace(/\n/g, '<br>');
-    msgHtml = msgHtml.replace(urlRegex, function(url) {
-      let href = url;
-      if (!/^https?:\/\//i.test(url)) {
-        href = 'http://' + url;
-      }
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-    });
-    contentDiv.innerHTML = msgHtml;
+    contentDiv.innerHTML = formatLink(data.msg);;
   }
   messageBox.appendChild(contentDiv);
   // Meta (time)
@@ -359,6 +359,18 @@ function checkState() {
   } else {
     foreground = false;
   }
+}
+function formatLink(text) {
+  const urlRegex = /((https?:\/\/|www\.)[^\s<]+)/gi;
+  let msgHtml = (text || '').replace(/\n/g, '<br>');
+  msgHtml = msgHtml.replace(urlRegex, function (url) {
+    let href = url;
+    if (!/^https?:\/\//i.test(url)) {
+      href = 'http://' + url;
+    }
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
+  return msgHtml;
 }
 
 // Send message
@@ -528,7 +540,9 @@ if (localStorage.getItem('CN-Chat/Username')) {
     if (data.edit) {
       document.getElementById(data.id + '.edited').style.display = 'block';
     }
-    document.getElementById(data.id + '.msg').innerHTML = data.msg.replace('\n', '<br>');
+    if (data.type != "img") {
+      document.getElementById(data.id + '.msg').innerHTML = formatLink(data.msg.replace('\n', '<br>'));
+    }
   });
   onDelete('Messages', function (data) {
     const repliedMessages = Object.values(datas).filter(msg => msg.reply === data.id.toString());
@@ -637,7 +651,7 @@ customMenu.addEventListener('click', (event) => {
           let toDeleteData = datas[contextmenuTarget.id];
           deleteData('Messages/' + toDeleteData.id, function () {
             if (toDeleteData.type == "img") {
-              deleteFile(toDeleteData.id + "/", function () {}, function (error) {
+              deleteFile(toDeleteData.id + "/", function () { }, function (error) {
                 console.error("Error deleting file:", error);
               });
             }
