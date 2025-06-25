@@ -59,17 +59,23 @@ function deleteData(path, callback) {
 }
 function onAdd(path, callback) {
   onChildAdded(ref(database, path), (snapshot) => {
-    callback(snapshot.val());
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    }
   });
 }
 function onDelete(path, callback) {
   onChildRemoved(ref(database, path), (snapshot) => {
-    callback(snapshot.val());
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    }
   });
 }
 function onUpdate(path, callback) {
   onChildChanged(ref(database, path), (snapshot) => {
-    callback(snapshot.val());
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    }
   });
 }
 function onChange(path, callback) {
@@ -317,7 +323,6 @@ function createMessage(data) {
   if (chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 150) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
-  let to;
   messageBox.oncontextmenu = function (event) {
     event.preventDefault();
     contextmenuTarget = messageBox;
@@ -328,7 +333,7 @@ function sendMessage() {
   let ts = Date.now();
   let data = {
     id: ts,
-    msg: messageInput.value,
+    msg: messageInput.value.trim(),
     name: localStorage.getItem('CN-Chat/Username'),
     reply: reply || null,
   };
@@ -600,7 +605,9 @@ if (localStorage.getItem('CN-Chat/Username')) {
 
 // Contextmenu
 document.addEventListener('contextmenu', (event) => {
-  event.preventDefault();
+  if (event.target.id != 'messageInput') {
+    event.preventDefault();
+  }
 });
 document.addEventListener('click', () => {
   customMenu.style.display = 'none';
@@ -724,13 +731,17 @@ fileInput.oninput = (files) => {
 }
 messageInput.addEventListener('paste', function (event) {
   const items = event.clipboardData.items;
+  let handled = false;
   for (let i = 0; i < items.length; i++) {
     if (items[i].type.indexOf('image') !== -1) {
       const fileData = items[i].getAsFile();
       fileUploadFunction(fileData);
-      event.preventDefault();
+      handled = true;
       break;
     }
+  }
+  if (handled) {
+    event.preventDefault(); // Only prevent default if an image was pasted
   }
 });
 
@@ -765,9 +776,16 @@ function updateConnectionStatus(isOnline) {
 window.addEventListener('online', () => updateConnectionStatus(true));
 window.addEventListener('offline', () => updateConnectionStatus(false));
 
-// messageInput.addEventListener('keydown', function (event) {
-//   if (event.key === 'Enter' && !event.shiftKey) {
-//     event.preventDefault();
-//     sendBtn.click();
-//   }
-// });
+// Only enable Enter-to-send on desktop (not on phones/tablets)
+function isDesktop() {
+  return !/Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+}
+
+if (isDesktop()) {
+  messageInput.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendBtn.click();
+    }
+  });
+}
